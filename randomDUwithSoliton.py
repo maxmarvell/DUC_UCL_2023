@@ -24,8 +24,8 @@ def finddUconstrained(q, soliton = False, print_result = False):
     """
     U_0 = unitary_group.rvs(q**2)
     R = np.random.rand(q**2, q**2)
-    
-    
+
+
     def unitarity(x):
         q = int(np.sqrt(np.sqrt(len(x))))
         U = x.reshape([q,q,q,q])
@@ -80,39 +80,3 @@ def finddUconstrained(q, soliton = False, print_result = False):
         print(result)
         
     return real_to_complex(result.x)
-
-q=2 #the local Hilbert space dimension
-dU = finddUconstrained(q, soliton=True)
-dU = dU.reshape([q,q,q,q])
-print("Norm is:", np.linalg.norm(dU))
-print("Normalised? (i.e. norm/q = 1?):", np.linalg.norm(dU)/q)
-IdId = np.einsum("ac,bd->abcd", np.identity(q), np.identity(q))
-print("Check unitarity: ||U * U^{\dag}-1|| = ", \
-      np.linalg.norm(np.einsum('abcd,efcd -> abef', dU, np.conj(dU))-IdId))
-print(
-      "Check unitarity: ||U^{\dag} * U-1|| = ", \
-      np.linalg.norm(np.einsum('cdab,cdef -> abef', np.conj(dU), dU)-IdId)
-      )
-print(
-      "Check dual unitarity: ||tilde{U} * tilde{U}^{\dag} - 1|| = ", \
-      np.linalg.norm(np.einsum('fbea,fdec->abcd',np.conj(dU),dU)-IdId)
-      )
-print(
-      "Check dual unitarity: ||tilde{U}^{\dag} * tilde{U} - 1|| = ", \
-      np.linalg.norm(np.einsum('bfae,dfce->abcd',np.conj(dU),dU)-IdId)
-      )
-Z = np.zeros([q,q])
-Z[0,0] = 1
-Z[1,1] = -1
-Z_0 = np.einsum('ac,bd->abcd', Z, np.identity(q))
-Z_1 = np.einsum('ac,bd->abcd', np.identity(q), Z)
-print(
-      "Check Z is a soliton: ||UZ_0 - Z_1U|| + ||UZ_1 - UZ_0|| = ", \
-          np.linalg.norm(np.einsum('abcd,cdef -> abef', dU, Z_0) -   \
-                         np.einsum('abcd,cdef -> abef', Z_1, dU)) +   \
-              np.linalg.norm(np.einsum('abcd,cdef -> abef', dU, Z_1) - \
-                             np.einsum('abcd,cdef -> abef', Z_0, dU))
-                  )
-
-
-
