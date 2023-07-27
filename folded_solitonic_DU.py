@@ -1,11 +1,106 @@
 import numpy as np
-from scipy.stats import unitary_group
 from scipy.optimize import minimize
-from itertools import permutations
+import random
+import sys
 
-'''
-    TODO: check
-'''
+def main():
+
+    seed_value = random.randrange(sys.maxsize)
+    random.seed(seed_value)
+
+    q = 2
+
+    W, res = constrained_DU(q)
+
+    arr = np.empty([q**4,q**4],dtype="complex_")
+
+    for i in range(q**2):
+        for j in range(q**2):
+            for k in range(q**2):
+                arr[(q**2)*i+k,(q**2)*j:((q**2)*j+(q**2))] = W[i,j,k,:]
+
+    np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",arr,delimiter=",")
+
+def real_to_complex(z):
+    return z[:len(z)//2] + 1j * z[len(z)//2:]
+
+def complex_to_real(z): 
+    return np.concatenate((np.real(z), np.imag(z)))
+
+def constrained_DU(q:int):
+
+    W = np.full(shape=[q**2,q**2,q**2,q**2],fill_value=np.nan,dtype='complex_')
+    R = real_to_complex(np.random.rand(2*(q**8 - (4*q**4 - 4*q**2 + 1))))
+    x0 = np.random.rand(2*(q**8 - (4*q**4 - 4*q**2 + 1)))
+
+    W[0,0,0,0] = 1
+
+    for i in  range(q**2):
+        for j in range(q**2):
+            if i != 0 or j != 0: 
+                W[i,j,0,0] = 0
+                W[i,0,j,0] = 0
+                W[0,0,i,j] = 0
+                W[0,i,0,j] = 0
+
+    indicies = np.argwhere(np.isnan(W))
+    
+    def unitarity(x:np.ndarray,W:np.ndarray,q:int):
+
+        for index, i in zip(indicies,x):
+            W[*index] = i
+
+        II = np.einsum("ac,bd->abcd",np.identity(q**2),np.identity(q**2))
+
+        return np.linalg.norm(np.einsum('abcd,efcd -> abef', W, np.conj(W))-II)
+    
+    def dual_unitarity(x:np.ndarray,W:np.ndarray,q:int):
+
+        for index, i in zip(indicies,x):
+            W[*index] = i
+
+        II = np.einsum("ac,bd->abcd",np.identity(q**2),np.identity(q**2))
+
+        return np.linalg.norm(np.einsum('fbea,fdec->abcd',np.conj(W),W)-II)
+    
+    def soliton(x:np.ndarray,W:np.ndarray,q:int):
+
+        for index, i in zip(indicies,x):
+            W[*index] = i
+
+        I, Z = np.identity(q**2), np.zeros([q**2,q**2])
+        Z[0,0], Z[1,1] = 1, -1
+
+        IZ = np.einsum('ac,bd->abcd',I,Z)
+        ZI = np.einsum('ac,bd->abcd',Z,I)
+
+        return np.linalg.norm(
+            np.einsum('abcd,cdef->abef',W,IZ)+
+            np.einsum('abcd,cdef->abef',ZI,W)-(IZ+ZI)
+        )
+    
+    def randomise(x:np.ndarray, R:np.ndarray):
+        return -abs(np.einsum("a,a->", x, R))
+
+    cons = [
+            {'type':'eq', 'fun': lambda z:  unitarity(real_to_complex(z),W,q)}, 
+            {'type':'eq', 'fun': lambda z: dual_unitarity(real_to_complex(z),W,q)},
+            {'type':'eq', 'fun': lambda z: soliton(real_to_complex(z),W,q)}
+            ]
+    
+    res = minimize(
+        lambda z: randomise(real_to_complex(z),R),
+        x0 = x0,
+        method='SLSQP',
+        constraints=cons,
+        options={'maxiter': 1000},
+        )
+    
+    return W, res
+
+if __name__ == "__main__":
+    for _ in range(100):
+        main()
 
 # class FoldedDUwithSoliton:
 
@@ -27,45 +122,3 @@ from itertools import permutations
 
 #     def constrain(self):
 #         pass
-
-def constrained_DU(q:int):
-
-    def generate_W(q:int):
-
-        W = np.full(shape=[q**2,q**2,q**2,q**2],fill_value=np.nan)
-        W[0,0,0,0] = 1
-
-        for i in  range(q**2):
-            for j in range(q**2):
-                if i != 0 or j != 0: 
-                    W[i,j,0,0] = 0
-                    W[i,0,j,0] = 0
-                    W[0,0,i,j] = 0
-                    W[0,i,0,j] = 0
-        
-        return W
-
-    # for i in range(q**2):
-    #     for j in range(q**2):
-    #         print(f'{W[i,j,0]},{W[i,j,1]},{W[i,j,2]},{W[i,j,3]}')
-
-    def soliton(x:np.ndarray, q:int):
-
-        W = generate_W(q)
-
-        for index, i in zip(np.argwhere(np.isnan(W)),x):
-            W[*index] = i
-
-        I, Z = np.zeros(q**2), np.zeros(q**2)
-        I[0], Z[1] = 1, 1
-
-        IZ = np.einsum('a,b->ab',I,Z)
-        ZI = np.einsum('a,b->ab',Z,I)
-
-        return np.linalg.norm(
-            np.einsum('abcd,bd->ac',W,IZ)-1,
-            np.einsum('abcd,bd->ac',W,ZI)-1)
-    
-    x0 = np.ones(q**8 - (4*q**4 - 4*q**2 + 1))
-
-constrained_DU(2)

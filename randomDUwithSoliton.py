@@ -66,9 +66,7 @@ def finddUconstrained(q, soliton = False, print_result = False):
         Z[0,0] = 1
         Z[1,1] = -1
         
-        cons = [{'type':'eq', 'fun': lambda z:  unitarity(real_to_complex(z))}, 
-                {'type':'eq', 'fun': lambda z: dual_unitarity(real_to_complex(z))}, 
-                {'type':'eq', 'fun': lambda z: soliton(real_to_complex(z), Z)}]
+         
     
     result = minimize(
         lambda z: randomise(real_to_complex(z), R),  \
