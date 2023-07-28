@@ -12,14 +12,7 @@ def main():
 
     W, res = constrained_DU(q)
 
-    arr = np.empty([q**4,q**4],dtype="complex_")
-
-    for i in range(q**2):
-        for j in range(q**2):
-            for k in range(q**2):
-                arr[(q**2)*i+k,(q**2)*j:((q**2)*j+(q**2))] = W[i,j,k,:]
-
-    np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",arr,delimiter=",")
+    np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
 
 def real_to_complex(z):
     return z[:len(z)//2] + 1j * z[len(z)//2:]
