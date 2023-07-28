@@ -1,7 +1,8 @@
 import numpy as np
-import quimb as qu
 from randomDUwithSoliton import finddUconstrained
 from itertools import permutations
+
+from test import W
 
 '''
     Computing the correlation function only where opertor a is initially localised to x 
@@ -15,7 +16,7 @@ from itertools import permutations
 '''
 
 def main():
-    pass
+    print(W[0,:,:,0])
 
 
 def transfer_matrix(W: np.ndarray, a: np.ndarray, x: int,
@@ -45,7 +46,15 @@ def transfer_matrix(W: np.ndarray, a: np.ndarray, x: int,
     if not terminate:
         return np.einsum('ba,a->b',defect,p)
     else:
-        return np.einsum('a,a->',a,p)       
+        return np.einsum('a,a->',a,p)    
+
+
+def complete_lists(x1, x2):
+    '''
+        Generates a complete set of possible lists which can
+        combine to form a complete set 
+    '''   
+    pass
 
 if __name__ == '__main__':
     main()

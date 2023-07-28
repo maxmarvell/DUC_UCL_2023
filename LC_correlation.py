@@ -1,5 +1,5 @@
 import numpy as np
-#from randomDUwithSoliton import finddUconstrained
+from randomDUwithSoliton import finddUconstrained
 import matplotlib.pyplot as plt
 
 def main():
