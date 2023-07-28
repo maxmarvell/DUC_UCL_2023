@@ -44,12 +44,26 @@ def transfer_matrix(W: np.ndarray, a: np.ndarray, x: int,
         return np.einsum('a,a->',a,p)    
 
 
-def complete_lists(x1, x2):
+def list_generator(x:int,data:np.ndarray=[],
+                   lists:np.ndarray=[]):
     '''
         Generates a complete set of possible lists which can
         combine to form a complete set 
-    '''   
-    pass
 
+        For now just taking base case of the operator a being 
+        intially being localised to an integer position 
+    '''
+
+    if x == 0:
+        data.append(lists)
+        return
+
+    for i in range(1,x+1):
+        sublist = lists.copy()
+        sublist.append(i)
+        list_generator(x-i,data,sublist)
+
+def random_walk()
+    
 if __name__ == '__main__':
     main()
