@@ -1,5 +1,4 @@
 import numpy as np
-from randomDUwithSoliton import finddUconstrained
 import matplotlib.pyplot as plt
 
 def main():
@@ -68,5 +67,4 @@ def innerproduct(q: int,b,a):
     return 1/q*np.einsum('ii->',pretracial)
 
 if __name__ == '__main__':
-    #U = finddUconstrained(2,soliton=True)
     main()

@@ -1,8 +1,4 @@
 import numpy as np
-from randomDUwithSoliton import finddUconstrained
-from itertools import permutations
-
-from test import W
 
 '''
     Computing the correlation function only where opertor a is initially localised to x 
@@ -16,8 +12,7 @@ from test import W
 '''
 
 def main():
-    print(W[0,:,:,0])
-
+    pass
 
 def transfer_matrix(W: np.ndarray, a: np.ndarray, x: int,
                     horizontal: bool = True, terminate: bool = False):
