@@ -12,7 +12,9 @@ import numpy as np
 '''
 
 def main():
-    pass
+    data = []
+    list_generator(20,data,3)
+    print(data)
 
 def transfer_matrix(W: np.ndarray, a: np.ndarray, x: int,
                     horizontal: bool = True, terminate: bool = False):
@@ -45,7 +47,7 @@ def transfer_matrix(W: np.ndarray, a: np.ndarray, x: int,
 
 
 def list_generator(x:int,data:np.ndarray=[],
-                   lists:np.ndarray=[]):
+                   k:int=np.inf,lists:np.ndarray=[]):
     '''
         Generates a complete set of possible lists which can
         combine to form a complete set 
@@ -57,13 +59,16 @@ def list_generator(x:int,data:np.ndarray=[],
     if x == 0:
         data.append(lists)
         return
+    elif len(lists) >= k:
+        return 
 
     for i in range(1,x+1):
         sublist = lists.copy()
         sublist.append(i)
-        list_generator(x-i,data,sublist)
+        list_generator(x-i,data,k,sublist)
 
-def random_walk()
+def metropolis_hastings():
+    pass
     
 if __name__ == '__main__':
     main()
