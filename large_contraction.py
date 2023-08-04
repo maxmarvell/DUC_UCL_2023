@@ -3,6 +3,8 @@ from time import time
 import random
 import sys
 import math
+import re
+import os
 
 '''
     Computing the correlation function only where opertor a is initially localised to x 
@@ -16,9 +18,28 @@ import math
 
 def main():
 
-    path_integral(3,8)
+    q = 2
+    e = 0.1
 
-def path_integral(x:float,t:int):
+    rx = re.compile(r'DU_2_([0-9]*).csv')
+
+    for _, _, files in os.walk("data/FoldedTensors"):
+        for file in files[:1]:
+            res = rx.match(file)
+            seed_value = res.group(1)
+            random.seed(seed_value)
+    
+            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
+                            delimiter=',',dtype='complex_')
+            P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv',
+                            delimiter=',',dtype='complex_')
+
+            pW = np.einsum('ab,bc->ac',P,W)
+
+            print(path_integral(5,9,pW.reshape(q**2,q**2,q**2,q**2)))
+
+
+def path_integral(x:float,t:int,W:np.ndarray):
 
     def transfer_matrix(W: np.ndarray, a: np.ndarray,
                         x: int, b: np.ndarray = [],
@@ -36,10 +57,10 @@ def path_integral(x:float,t:int):
 
         if horizontal:
             direct = W[0,:,:,0]
-            defect = W[:,:,0,0]
+            defect = W[:,0,:,0]
         else:
             direct = W[:,0,0,:]
-            defect = W[0,0,:,:]
+            defect = W[0,:,0,:]
 
         p = np.einsum('ba,a->b',direct,a)
 
@@ -64,10 +85,10 @@ def path_integral(x:float,t:int):
             a = transfer_matrix(W,a,x_h[i])
             a = transfer_matrix(W,a,x_v[i],horizontal=False)
 
-        return transfer_matrix(W,a,x_h[-1],b=b,terminate=True)
+        return np.abs(transfer_matrix(W,a,x_h[-1],b=b,terminate=True)) if len(x_h) > len(x_v) else np.abs(np.einsum('a,a->',a,b))
 
-    def list_generator(x:int,data:np.ndarray,dict:dict,
-                    k:int=np.inf,lists:np.ndarray=[]):
+    def list_generator(x:int,data:dict,k:int=np.inf,
+                       lists:np.ndarray=[]):
         '''
             Generates a complete set of possible lists which can
             combine to form a complete set 
@@ -77,8 +98,10 @@ def path_integral(x:float,t:int):
         '''
 
         if x == 0:
-            dict[len(data)] = len(lists)
-            data.append(lists)
+            try:
+                data[len(lists)].append(lists)
+            except:
+                data[len(lists)] = [lists]
             return
         elif len(lists) >= k:
             return 
@@ -86,23 +109,43 @@ def path_integral(x:float,t:int):
         for i in range(1,x+1):
             sublist = lists.copy()
             sublist.append(i)
-            list_generator(x-i,data,dict,k,sublist)
+            list_generator(x-i,data,k,sublist)
 
-    vertical_data = []
-    vertical_dict = {}
-
-    horizontal_data = []
-    horizontal_dict = {}
+    vertical_data = {}
+    horizontal_data = {}
 
     x_h, x_v = t + math.ceil(x), t + 1 - math.ceil(x)
 
-    list_generator(x_v,vertical_data,vertical_dict)
-    list_generator(x_h,horizontal_data,horizontal_dict)
+    k = min(x_h,x_v)
 
-    print(vertical_dict)
+    list_generator(x_v,vertical_data,k=k)
+    list_generator(x_h,horizontal_data,k=k)
 
-def metropolis_hastings(input:np.ndarray,
-                        x:int):
+    n = 1
+    sum = 0
+    a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
+
+    while n <= k:
+
+        l1, l2 = horizontal_data[n], vertical_data[n]
+
+        for h in l1:
+            for v in l2:
+                sum += skeleton(h,v,W,a,b)
+
+        if n - 1:
+            l1, l2 = horizontal_data[n], vertical_data[n-1]
+            for h in l1:
+                for v in l2:
+                    sum += skeleton(h,v,W,a,b)
+        
+        n += 1
+
+    a = transfer_matrix(W,a,4)
+
+    return sum
+
+def metropolis_hastings(input:np.ndarray,x:int):
 
     if input[-1] != x or input[0] != 0:
         raise Exception('Input array not of correct format')
