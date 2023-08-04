@@ -30,10 +30,10 @@ def main():
             P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv',
                             delimiter=',',dtype='complex_')
 
-            pW = np.dot(P,W)
+            pW = np.einsum('ab,bc->ac',P,W)
 
-            x = 1
-            t = 10
+            x = 5
+            t = 9
 
             print(exact_contraction(x,t,q,pW))
 
@@ -74,9 +74,7 @@ def exact_contraction(x:float,
     f'UNITARY_{x_h-1},{x_v-1}': (1, 1),
     }
 
-    TN.draw(show_tags=True, fix=fix)
-
-    print(TN)
+    TN.draw(show_tags=True)
 
     return np.abs(TN.contract())
 
