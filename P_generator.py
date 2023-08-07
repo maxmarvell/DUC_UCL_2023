@@ -65,7 +65,7 @@ def main():
                 if all([H,U1,Q1,U2,U3,Q2]<1e-3):
                     np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
 
-def find_P_constrained(q, print_result = False):
+def find_P_constrained(q):
 
     R = real_to_complex(np.random.rand(2*(q**8 - 2*q**4 + 1)))
     P_0 = real_to_complex(np.random.rand(2*(q**8 - 2*q**4 + 1))).reshape([q**4 - 1, q**4 - 1])
@@ -101,10 +101,7 @@ def find_P_constrained(q, print_result = False):
     P = real_to_complex(result.x).reshape([q**4 - 1,q**4 - 1])
     Direct_Sum = np.zeros([np.shape(P)[0]+1, np.shape(P)[1]+1], dtype="complex_")
     Direct_Sum[1:,1:] = P
-    
-    if print_result == True:
-        print(result)
-        
+
     return Direct_Sum
 
 def Exponential_Map(e, P):

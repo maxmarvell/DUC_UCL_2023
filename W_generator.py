@@ -11,12 +11,6 @@ import sys
     Run to generate a seeded random value dual unitary which is saved as CSV
 '''
 
-def real_to_complex(z):
-    return z[:len(z)//2] + 1j * z[len(z)//2:]
-
-def complex_to_real(z):
-    return np.concatenate((np.real(z), np.imag(z)))
-
 def main():
         
     seed_value = random.randrange(sys.maxsize)
@@ -59,6 +53,12 @@ def main():
     
     if all([U,DU,S,abs(N - 1)] < 1e-3):
         np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
+
+def real_to_complex(z):
+    return z[:len(z)//2] + 1j * z[len(z)//2:]
+
+def complex_to_real(z):
+    return np.concatenate((np.real(z), np.imag(z)))
 
 def initialize_W(q:int):
 
