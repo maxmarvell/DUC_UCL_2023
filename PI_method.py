@@ -127,12 +127,6 @@ def path_integral(x:float,t:int,W:np.ndarray):
 
     while n <= k:
 
-        l1, l2 = horizontal_data[n], vertical_data[n]
-
-        for h in l1:
-            for v in l2:
-                sum += skeleton(h,v,W,a,b)
-
         if n - 1:
             l1, l2 = horizontal_data[n], vertical_data[n-1]
             for h in l1:
