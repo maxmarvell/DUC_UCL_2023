@@ -5,6 +5,7 @@ import sys
 import math
 import re
 import os
+import pandas as pd
 
 '''
     Computing the correlation function only where opertor a is initially localised to x 
@@ -18,26 +19,52 @@ import os
 
 def main():
 
-    q = 2
-    e = 0.1
+    start = time()
 
-    rx = re.compile(r'DU_2_([0-9]*).csv')
+    q = 2
+
+    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
+    rx = re.compile(rstr)
 
     for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files[:1]:
+        for file in files:
+
             res = rx.match(file)
             seed_value = res.group(1)
             random.seed(seed_value)
     
             W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
                             delimiter=',',dtype='complex_')
-            P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv',
-                            delimiter=',',dtype='complex_')
+            
+            for e in np.linspace(0.1,0.01,11):
 
-            pW = np.einsum('ab,bc->ac',P,W)
+                df = pd.DataFrame()
 
-            print(path_integral(5,9,pW.reshape(q**2,q**2,q**2,q**2)))
+                e = str(np.round(e,4)).ljust(5,'0')
 
+                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_' + e + f'_{seed_value}.csv',
+                                delimiter=',',dtype='complex_')
+
+                pW = np.einsum('ab,bc->ac',P,W)
+
+                for t in range(10):
+
+                    data = []
+
+                    for x in range(t+1):
+                        data.append(path_integral(x,t,pW.reshape(q**2,q**2,q**2,q**2)))
+
+                    s = pd.Series(data,range(t+1),name=t)
+
+                    df = pd.concat([df, s.to_frame().T])
+
+                    print(df)
+
+                df.to_csv(f"./data/PiMethod/heatmap_{q}_" + e + f"_{seed_value}.csv", index=False)
+
+    end = time()
+
+    print('\nTime taken to run:', end-start)
 
 def path_integral(x:float,t:int,W:np.ndarray):
 
@@ -62,15 +89,15 @@ def path_integral(x:float,t:int,W:np.ndarray):
             direct = W[:,0,0,:]
             defect = W[0,:,0,:]
 
-        p = np.einsum('ba,a->b',direct,a)
+        if x > 1:
+            p = np.einsum('ba,a->b',direct,a)
+            for _ in range(x-2):
+                p = np.einsum('ba,a->b',direct,p)
+        else:
+            p = a
 
-        for _ in range(x-1):
-            p = np.einsum('ba,a->b',direct,p)
-
-        if not terminate and not horizontal:
+        if not terminate:
             return np.einsum('ba,a->b',defect,p)
-        elif not terminate and horizontal:
-            return p
         else:
             return np.einsum('a,a->',b,p)
         
@@ -85,7 +112,7 @@ def path_integral(x:float,t:int,W:np.ndarray):
             a = transfer_matrix(W,a,x_h[i])
             a = transfer_matrix(W,a,x_v[i],horizontal=False)
 
-        return np.abs(transfer_matrix(W,a,x_h[-1],b=b,terminate=True)) if len(x_h) > len(x_v) else np.abs(np.einsum('a,a->',a,b))
+        return transfer_matrix(W,a,x_h[-1],b=b,terminate=True) if len(x_h) > len(x_v) else np.einsum('a,a->',a,b)
 
     def list_generator(x:int,data:dict,k:int=np.inf,
                        lists:np.ndarray=[]):
@@ -111,6 +138,11 @@ def path_integral(x:float,t:int,W:np.ndarray):
             sublist.append(i)
             list_generator(x-i,data,k,sublist)
 
+    a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
+
+    if x == 0 and t == 0:
+        return np.abs(np.einsum('a,a->',a,b))
+
     vertical_data = {}
     horizontal_data = {}
 
@@ -118,26 +150,37 @@ def path_integral(x:float,t:int,W:np.ndarray):
 
     k = min(x_h,x_v)
 
-    list_generator(x_v,vertical_data,k=k)
+    list_generator(x_v-1,vertical_data)
     list_generator(x_h,horizontal_data,k=k)
 
     n = 1
     sum = 0
-    a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
 
     while n <= k:
 
-        if n - 1:
-            l1, l2 = horizontal_data[n], vertical_data[n-1]
+        try:
+            l1, l2 = horizontal_data[n], vertical_data[n]
             for h in l1:
                 for v in l2:
                     sum += skeleton(h,v,W,a,b)
-        
+        except:pass
+            
+        try:
+            l1, l2 = horizontal_data[n + 1], vertical_data[n]
+            for h in l1:
+                for v in l2:
+                    sum += skeleton(h,v,W,a,b)
+        except:pass
+                        
+        try:
+            l1, v = horizontal_data[n], vertical_data[0]
+            for h in l1:
+                sum += skeleton(h,[],W,a,b)
+        except:pass
+
         n += 1
 
-    a = transfer_matrix(W,a,4)
-
-    return sum
+    return np.abs(sum)
 
 def metropolis_hastings(input:np.ndarray,x:int):
 

@@ -6,6 +6,7 @@ import random
 import math
 import re
 import os
+import pandas as pd
 
 """
     Code to compute benchmark exact correlations for DU circuit
@@ -14,10 +15,12 @@ import os
 
 def main():
 
-    q = 2
-    e = 0.1
+    start = time()
 
-    rx = re.compile(r'DU_2_([0-9]*).csv')
+    q = 2
+
+    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
+    rx = re.compile(rstr)
 
     for _, _, files in os.walk("data/FoldedTensors"):
         for file in files[:1]:
@@ -27,15 +30,37 @@ def main():
     
             W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
                             delimiter=',',dtype='complex_')
-            P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv',
-                            delimiter=',',dtype='complex_')
+            
+            for e in np.linspace(0.01,0.1,11):
 
-            pW = np.einsum('ab,bc->ac',P,W)
+                df = pd.DataFrame()
 
-            x = 5
-            t = 9
+                e = str(np.round(e,4)).ljust(5,'0')
 
-            print(exact_contraction(x,t,q,pW))
+                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_' + e + f'_{seed_value}.csv',
+                                delimiter=',',dtype='complex_')
+
+                pW = np.einsum('ab,bc->ac',P,W)
+
+                for t in range(10):
+
+                    data = []
+
+                    for x in range(t+1):
+
+                        data.append(exact_contraction(x,t,q,pW))
+
+                    s = pd.Series(data,range(t+1))
+
+                    df = pd.concat([df, s.to_frame().T])
+
+                    print(df)
+
+                df.to_csv(f"./data/TnMethod/heatmap_{q}_" + e + f"_{seed_value}.csv", index=False)
+
+    end = time()
+
+    print('\nTime taken to run:', end-start)
 
 def exact_contraction(x:float,
                       t:int,
@@ -73,8 +98,6 @@ def exact_contraction(x:float,
     f'UNITARY_{x_h-1},0': (1, 0),
     f'UNITARY_{x_h-1},{x_v-1}': (1, 1),
     }
-
-    TN.draw(show_tags=True)
 
     return np.abs(TN.contract())
 
