@@ -1,8 +1,9 @@
 from scipy.optimize import minimize
+from time import time
 import numpy as np
 import random
-import time
 import sys
+import os
 
 '''
     Optimisation routine that generates random dual unitary folded tensors
@@ -13,7 +14,7 @@ import sys
 
 def main():
         
-    seed_value = random.randrange(sys.maxsize)
+    seed_value = random.randrange(2**32 - 1)
     random.seed(seed_value)
     np.random.seed(seed_value)
 
@@ -23,7 +24,7 @@ def main():
     q = 2
     W = initialize_W(q)
     indices = np.argwhere(np.isnan(W))
-    results = find_W_constrained(q, soliton=True)
+    results = find_W_constrained(q)
     repack_W(indices,results,W)
 
     end = time()
@@ -51,8 +52,13 @@ def main():
     S = np.linalg.norm(np.einsum('abcd,cd->ab',W,ZI)-IZ) + np.linalg.norm(np.einsum('abcd,cd->ab',W,IZ)-ZI)
     print("Check Z is a soliton: ", S)
     
-    if all([U,DU,S,abs(N - 1)] < 1e-3):
-        np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
+    if U < 1e-3 and DU < 1e-3 and S < 1e-3 and abs(N - 1) < 1e-3:
+        
+        try:
+            np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
+        except:
+            os.mkdir("./data/FoldedTensors/")
+            np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
 
 def real_to_complex(z):
     return z[:len(z)//2] + 1j * z[len(z)//2:]
@@ -76,7 +82,7 @@ def initialize_W(q:int):
 
 def repack_W(indices,X,W):
 
-    if sys.version < 3.11:
+    if sys.version < '3.11':
         for i in range(len(X)):
             index = indices[i]
             e = X[i]
@@ -131,5 +137,5 @@ def find_W_constrained(q):
     return real_to_complex(result.x)
 
 if __name__ == "__main__":
-    for _ in range(20):
+    for _ in range(5):
         main()

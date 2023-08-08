@@ -7,29 +7,36 @@ import random
 import os
 import re
 
+'''
+    Code to generate pertubations in the folded picture.
+    Note that this file creates 
+'''
+
 def main():
 
     for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files:
+        for file in files[0]:
 
             q = 2
 
-            for e in range(0.01,0.1,0.01):
+            for e in np.linspace(0.0001,0.01,6):
+
+                e = np.round(e,5)
 
                 rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
                 rx = re.compile(rstr)
 
                 res = rx.match(file)
-                seed_value = res.group(1)
+                seed_value = 3806443768
 
                 random.seed(seed_value)
                 np.random.seed(seed_value)
 
-                P = find_P_constrained(q)
-                G = Exponential_Map(e, P)
-
                 start = time.time()
                 print("\n")
+
+                P = find_P_constrained(q)
+                G = Exponential_Map(e, P)
 
                 end = time.time()
                 print(end-start)
@@ -62,14 +69,20 @@ def main():
                 Q2 = np.linalg.norm(np.einsum('ab,b->a',G,Q) - Q)
                 print("Check Q-Conservation: ", Q2)
                 
-                if all([H,U1,Q1,U2,U3,Q2]<1e-3):
-                    np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
+                if H < 1e-3 and U1 < 1e-3 and Q1 < 1e-3 and U2 < 1e-3 and U3 < 1e-3 and Q2 <1e-3:
+
+                    try:
+                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
+                    except:
+                        os.mkdir("./data/FoldedPertubations/")
+                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
 
 def find_P_constrained(q):
 
     R = real_to_complex(np.random.rand(2*(q**8 - 2*q**4 + 1)))
     P_0 = real_to_complex(np.random.rand(2*(q**8 - 2*q**4 + 1))).reshape([q**4 - 1, q**4 - 1])
     P_0 = complex_to_real(((P_0 + P_0.conj().T)/2).flatten())
+    
     I, Z = np.zeros(q**2), np.zeros(q**2)
     I[0], Z[1] = 1, 1
     IZ = np.einsum('a,b->ab',I,Z).flatten()[1:]
