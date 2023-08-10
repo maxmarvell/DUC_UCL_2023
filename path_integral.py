@@ -10,7 +10,7 @@ from scipy.linalg import expm
 def main():
 
     q = 2
-    e = 0.1
+    e = 0.0000001
     W_path = "./Sample_Tensor.csv"
     P_path = "./Sample_Perturbation.csv"
     W = np.loadtxt(W_path,delimiter=',',dtype='complex_')
@@ -30,7 +30,7 @@ def main():
 
 def path_integral(T:float,W:np.ndarray):
 
-    def transfer_matrix(X: float, W: np.ndarray, a: np.ndarray,
+    def transfer_matrix(t:float, X: float, W: np.ndarray, a: np.ndarray,
                         x: int, b: np.ndarray = [],
                         horizontal: bool = True,
                         terminate: bool = False):
@@ -56,7 +56,7 @@ def path_integral(T:float,W:np.ndarray):
                 a = np.einsum('ab,b->a',direct,a)
             return np.einsum('ab,b->a',defect,a)
 
-        elif terminate and (int(2*(T+X))%2 == 0):
+        elif terminate and (int(2*(t+X))%2 == 0):
             for _ in range(x):
                 a = np.einsum('ab,b->a',direct,a)
             return np.einsum('a,a->',b,a)
@@ -70,7 +70,7 @@ def path_integral(T:float,W:np.ndarray):
 
         
 
-    def skeleton(X:float, x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
+    def skeleton(t:float, X:float, x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
                 a:np.ndarray, b:np.ndarray):
         '''
             Computes a contribution to the path integral of the
@@ -78,10 +78,10 @@ def path_integral(T:float,W:np.ndarray):
         '''
 
         for i in range(len(x_v)):
-            a = transfer_matrix(X,W,a,x_h[i])
-            a = transfer_matrix(X,W,a,x_v[i],horizontal=False)
+            a = transfer_matrix(t,X,W,a,x_h[i])
+            a = transfer_matrix(t,X,W,a,x_v[i],horizontal=False)
 
-        return transfer_matrix(X,W,a,x_h[-1],b=b,terminate=True) if len(x_v) < len(x_h) else np.einsum('a,a->',a,b)
+        return transfer_matrix(t,X,W,a,x_h[-1],b=b,terminate=True) if len(x_v) < len(x_h) else np.einsum('a,a->',a,b)
 
 
     def list_generator(x:int,data:dict,k:int=np.inf,
@@ -111,7 +111,6 @@ def path_integral(T:float,W:np.ndarray):
     canvas[0,int(2*T)-1] = 1.0
     a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
 
-   
 
     for t in range(1, int(2*T)):
         for x in range(-t, t):
@@ -132,7 +131,7 @@ def path_integral(T:float,W:np.ndarray):
 
 
             list_generator(x_h,horizontal_data,k=k)
-            list_generator(x_v,vertical_data)
+            list_generator(x_v-1,vertical_data)
 
             #print(horizontal_data.keys())
             #print(vertical_data.keys())
@@ -148,7 +147,7 @@ def path_integral(T:float,W:np.ndarray):
                     l1, l2 = horizontal_data[n], vertical_data[n]
                     for h in l1:
                         for v in l2:
-                            sum += skeleton(-x/2,h,v,W,a,b)
+                            sum += skeleton(t/2,-x/2,h,v,W,a,b)
                 except:
                     print("exeception1")
                     pass
@@ -157,7 +156,7 @@ def path_integral(T:float,W:np.ndarray):
                     l1, l2 = horizontal_data[n + 1], vertical_data[n]
                     for h in l1:
                         for v in l2:
-                            sum += skeleton(-x/2,h,v,W,a,b)
+                            sum += skeleton(t/2,-x/2,h,v,W,a,b)
                 except:
                     print("exeception2")
                     pass
@@ -165,10 +164,11 @@ def path_integral(T:float,W:np.ndarray):
                 try:
                     l1, v = horizontal_data[n], vertical_data[0]
                     for h in l1:
-                        sum += skeleton(-x/2,h,[],W,a,b)
+                        sum += skeleton(t/2,-x/2,h,[],W,a,b)
                 except:
                     print("exeception3")
                     pass
+
 
                 n += 1
          
