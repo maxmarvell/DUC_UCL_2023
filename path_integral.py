@@ -111,7 +111,7 @@ def path_integral(T:float,W:np.ndarray):
     canvas[0,int(2*T)-1] = 1.0
     a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
 
-    print(skeleton(-2.5,[1,1,2],[1,1,3],W,a,b))
+   
 
     for t in range(1, int(2*T)):
         for x in range(-t, t):
