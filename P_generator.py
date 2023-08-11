@@ -15,19 +15,19 @@ import re
 def main():
 
     for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files[0]:
+        for file in files[:1]:
 
             q = 2
 
-            for e in np.linspace(0.0001,0.01,6):
+            for _ in range(1):
 
-                e = np.round(e,5)
+                e = 5*(10 ** -8)
 
                 rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
                 rx = re.compile(rstr)
 
                 res = rx.match(file)
-                seed_value = 3806443768
+                seed_value = int(res[1])
 
                 random.seed(seed_value)
                 np.random.seed(seed_value)
@@ -39,7 +39,7 @@ def main():
                 G = Exponential_Map(e, P)
 
                 end = time.time()
-                print(end-start)
+                print("Time taken to run:",end-start)
                 print("\n")
 
                 I, Z = np.zeros(q**2), np.zeros(q**2)
@@ -77,7 +77,7 @@ def main():
                         os.mkdir("./data/FoldedPertubations/")
                         np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
 
-def find_P_constrained(q):
+def find_P_constrained(q:int):
 
     R = real_to_complex(np.random.rand(2*(q**8 - 2*q**4 + 1)))
     P_0 = real_to_complex(np.random.rand(2*(q**8 - 2*q**4 + 1))).reshape([q**4 - 1, q**4 - 1])
@@ -88,18 +88,18 @@ def find_P_constrained(q):
     IZ = np.einsum('a,b->ab',I,Z).flatten()[1:]
     ZI = np.einsum('a,b->ab',Z,I).flatten()[1:]
 
-    def Hermiticity(P):
+    def Hermiticity(P:np.ndarray):
         P = real_to_complex(P)
         P = P.reshape([q**4 - 1,q**4 - 1])
         return np.linalg.norm(P - P.conj().T)
     
-    def Charge_conservation(P):
+    def Charge_conservation(P:np.ndarray):
         P = real_to_complex(P)
         P = P.reshape([q**4 - 1,q**4 - 1])
         Q = IZ + ZI
         return np.linalg.norm(np.einsum('ab,b->a',P,Q))
 
-    def randomise(P, R):
+    def randomise(P:np.ndarray, R:np.ndarray):
         P = real_to_complex(P)
         return -abs(np.einsum("a,a->", np.conj(P), R))
 
@@ -128,5 +128,4 @@ def plot(G):
     plt.show()
 
 if __name__ == "__main__":
-    for _ in range(20):
-        main()
+    main()
