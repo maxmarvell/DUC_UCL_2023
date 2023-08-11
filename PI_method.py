@@ -27,7 +27,7 @@ def main():
     rx = re.compile(rstr)
 
     for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files:
+        for file in files[:1]:
 
             res = rx.match(file)
             seed_value = res.group(1)
@@ -36,42 +36,52 @@ def main():
             W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
                             delimiter=',',dtype='complex_')
             
-            for e in np.linspace(0.1,0.01,11):
+            for _ in range(1):
+
+                e = 5*(10 ** -8)
 
                 df = pd.DataFrame()
 
-                e = str(np.round(e,4)).ljust(5,'0')
-
-                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_' + e + f'_{seed_value}.csv',
+                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv',
                                 delimiter=',',dtype='complex_')
 
                 pW = np.einsum('ab,bc->ac',P,W)
 
-                for t in range(10):
+                for T in range(2*10):
 
-                    data = []
+                    t = float(T)/2
 
-                    for x in range(t+1):
-                        data.append(path_integral(x,t,pW.reshape(q**2,q**2,q**2,q**2)))
+                    data = np.array([])
 
-                    s = pd.Series(data,range(t+1),name=t)
+                    for x in range(-T,T+1):
+                        x = float(x)/2
+                        data = np.append(data,[path_integral(x,t,pW.reshape(q**2,q**2,q**2,q**2))])
+
+                    s = pd.Series(data,range(-T,T+1),name=t)
 
                     df = pd.concat([df, s.to_frame().T])
 
-                    print(df)
+                print(df)
 
-                df.to_csv(f"./data/PiMethod/heatmap_{q}_" + e + f"_{seed_value}.csv", index=False)
+                try:
+                    df.to_csv(f"./data/PiMethod/heatmap_{q}_{e}_{seed_value}.csv", index=False)
+                except:
+                    os.mkdir("./data/PiMethod_temp/")
+                    df.to_csv(f"./data/PiMethod/heatmap_{q}_{e}_{seed_value}.csv", index=False)
 
     end = time()
 
     print('\nTime taken to run:', end-start)
 
-def path_integral(x:float,t:int,W:np.ndarray):
+def path_integral(x:float,
+                  t:float,
+                  W:np.ndarray):
 
     def transfer_matrix(W: np.ndarray, a: np.ndarray,
                         x: int, b: np.ndarray = [],
                         horizontal: bool = True,
-                        terminate: bool = False):
+                        terminate: bool = False,
+                        X: float = 0):
 
         """
             A transfer matrix can either be horizontal or vertical row of contracted
@@ -90,19 +100,21 @@ def path_integral(x:float,t:int,W:np.ndarray):
             defect = W[0,:,0,:]
 
         if x > 1:
-            p = np.einsum('ba,a->b',direct,a)
             for _ in range(x-2):
-                p = np.einsum('ba,a->b',direct,p)
-        else:
-            p = a
+                a = np.einsum('ba,a->b',direct,a)
 
         if not terminate:
-            return np.einsum('ba,a->b',defect,p)
+            a = np.einsum('ba,a->b',direct,a)
+            return np.einsum('ba,a->b',defect,a)
         else:
-            return np.einsum('a,a->',b,p)
+            if int(2*(t+X))%2 == 0:
+                a = np.einsum('ba,a->b',direct,a)
+            else:
+                a = np.einsum('ba,a->b',defect,a)
+            return np.einsum('a,a->',b,a)
         
     def skeleton(x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
-                a:np.ndarray, b:np.ndarray):
+                a:np.ndarray, b:np.ndarray, X:float = 0):
         '''
             Computes a contribution to the path integral of the
             input skeleton diagram
@@ -112,7 +124,7 @@ def path_integral(x:float,t:int,W:np.ndarray):
             a = transfer_matrix(W,a,x_h[i])
             a = transfer_matrix(W,a,x_v[i],horizontal=False)
 
-        return transfer_matrix(W,a,x_h[-1],b=b,terminate=True) if len(x_h) > len(x_v) else np.einsum('a,a->',a,b)
+        return transfer_matrix(W,a,x_h[-1],b=b,terminate=True,X=X) if len(x_h) > len(x_v) else np.einsum('a,a->',a,b)
 
     def list_generator(x:int,data:dict,k:int=np.inf,
                        lists:np.ndarray=[]):
@@ -146,11 +158,11 @@ def path_integral(x:float,t:int,W:np.ndarray):
     vertical_data = {}
     horizontal_data = {}
 
-    x_h, x_v = t + math.ceil(x), t + 1 - math.ceil(x)
+    x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
 
     k = min(x_h,x_v)
 
-    list_generator(x_v-1,vertical_data)
+    list_generator(x_v-1,vertical_data,k=k)
     list_generator(x_h,horizontal_data,k=k)
 
     n = 1
@@ -162,20 +174,20 @@ def path_integral(x:float,t:int,W:np.ndarray):
             l1, l2 = horizontal_data[n], vertical_data[n]
             for h in l1:
                 for v in l2:
-                    sum += skeleton(h,v,W,a,b)
+                    sum += skeleton(h,v,W,a,b,X=x)
         except:pass
             
         try:
-            l1, l2 = horizontal_data[n + 1], vertical_data[n]
+            l1, l2 = horizontal_data[n+1], vertical_data[n]
             for h in l1:
                 for v in l2:
-                    sum += skeleton(h,v,W,a,b)
+                    sum += skeleton(h,v,W,a,b,X=x)
         except:pass
                         
         try:
-            l1, v = horizontal_data[n], vertical_data[0]
+            l1, v = horizontal_data[1], vertical_data[0]
             for h in l1:
-                sum += skeleton(h,[],W,a,b)
+                sum += skeleton(h,[],W,a,b,X=x)
         except:pass
 
         n += 1
