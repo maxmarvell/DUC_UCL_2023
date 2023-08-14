@@ -13,7 +13,10 @@ import os
 '''
 
 def main():
-        
+    generate_data(2)
+    
+def generate_data(q:int):
+
     seed_value = random.randrange(2**32 - 1)
     random.seed(seed_value)
     np.random.seed(seed_value)
@@ -21,7 +24,6 @@ def main():
     start = time()
     print("\n")
 
-    q = 2
     W = initialize_W(q)
     indices = np.argwhere(np.isnan(W))
     results = find_W_constrained(q)
