@@ -14,14 +14,22 @@ import re
 
 def main():
 
+    q = 2
+    pertubations = [i for i in range(1,10)]
+    power = 7
+
+    generate_data(q,pertubations,power)
+
+def generate_data(q:int,
+                  pertubations:np.ndarray,
+                  power:int):
+
     for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files[:1]:
+        for file in files[:]:
 
-            q = 2
+            for i in pertubations:
 
-            for _ in range(1):
-
-                e = 5*(10 ** -8)
+                e = i*(10**(-power))
 
                 rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
                 rx = re.compile(rstr)
@@ -72,10 +80,10 @@ def main():
                 if H < 1e-3 and U1 < 1e-3 and Q1 < 1e-3 and U2 < 1e-3 and U3 < 1e-3 and Q2 <1e-3:
 
                     try:
-                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
+                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{i}e-0{power}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
                     except:
                         os.mkdir("./data/FoldedPertubations/")
-                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
+                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{i}e-0{power}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
 
 def find_P_constrained(q:int):
 
