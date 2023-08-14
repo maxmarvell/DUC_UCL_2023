@@ -54,27 +54,19 @@ def finddUconstrained(q, soliton = False, print_result = False):
                              )
     
     
-    if not soliton:
-        
-        cons = [{'type':'eq', 'fun': lambda z:  unitarity(real_to_complex(z))}, 
-                {'type':'eq', 'fun': lambda z: dual_unitarity(real_to_complex(z))}]
-
-        
-    if soliton:
-        
-        Z = np.zeros([q,q])
-        Z[0,0] = 1
-        Z[1,1] = -1
-        
-         
+    cons = [{'type':'eq', 'fun': lambda z:  unitarity(real_to_complex(z))}, 
+                {'type':'eq', 'fun': lambda z: dual_unitarity(real_to_complex(z))}]     
     
     result = minimize(
         lambda z: randomise(real_to_complex(z), R),  \
                       x0 = complex_to_real(U_0.flatten()), \
-                      method='SLSQP', constraints=cons, options={'maxiter': 1000}
+                      method='SLSQP', constraints=cons, options={'maxiter': 1000},
+                      tol = 0.1
                       )
     
     if print_result == True:
         print(result)
         
-    return real_to_complex(result.x)
+    return real_to_complex(result.x), result
+
+print(finddUconstrained(2))
