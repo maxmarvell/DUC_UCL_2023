@@ -1,11 +1,11 @@
-import numpy as np
 from time import time
+import pandas as pd
+import numpy as np
 import random
 import sys
 import math
 import re
 import os
-import pandas as pd
 
 '''
     Computing the correlation function only where opertor a is initially localised to x 
@@ -21,61 +21,159 @@ def main():
 
     start = time()
 
-    q = 2
+    q, k, tspan, depth = 2, 3, 20, 6
 
-    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
-    rx = re.compile(rstr)
-
-    for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files[:1]:
-
-            res = rx.match(file)
-            seed_value = res.group(1)
-            random.seed(seed_value)
+    generate_conefront(q,tspan,depth,k=k,truncate=True)
     
-            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
-                            delimiter=',',dtype='complex_')
-            
-            for _ in range(1):
-
-                e = 5*(10 ** -8)
-
-                df = pd.DataFrame()
-
-                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}_{seed_value}.csv',
-                                delimiter=',',dtype='complex_')
-
-                pW = np.einsum('ab,bc->ac',P,W)
-
-                for T in range(2*10):
-
-                    t = float(T)/2
-
-                    data = np.array([])
-
-                    for x in range(-T,T+1):
-                        x = float(x)/2
-                        data = np.append(data,[path_integral(x,t,pW.reshape(q**2,q**2,q**2,q**2))])
-
-                    s = pd.Series(data,range(-T,T+1),name=t)
-
-                    df = pd.concat([df, s.to_frame().T])
-
-                print(df)
-
-                try:
-                    df.to_csv(f"./data/PiMethod/heatmap_{q}_{e}_{seed_value}.csv", index=False)
-                except:
-                    os.mkdir("./data/PiMethod_temp/")
-                    df.to_csv(f"./data/PiMethod/heatmap_{q}_{e}_{seed_value}.csv", index=False)
-
     end = time()
 
     print('\nTime taken to run:', end-start)
 
+def generate_data(q:int,
+                  tspan:int,
+                  k:int = 0,
+                  truncate:bool = False):
+
+    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
+    rx = re.compile(rstr)
+
+    if truncate:
+        path = f"data/truncated_path_k{k}/"
+    else:
+        path = "data/complete_path/"
+
+    for _, _, files in os.walk("data/FoldedTensors"):
+        for file in files[:]:
+
+            res = rx.match(file)
+            seed_value = res.group(1)
+
+            err = pd.Series()
+    
+            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
+                            delimiter=',',dtype='complex_')
+            
+            for i in range(1,6):
+
+                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{i}e-07_{seed_value}.csv',
+                                delimiter=',',dtype='complex_')
+
+                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+
+                df = pd.DataFrame()
+
+                max_dev = np.inf
+
+                for T in range(2*tspan-1):
+
+                    t = float(T)/2
+
+                    data = np.array([])
+                    inds = np.array([])
+
+                    for x in range(-T,T+1):
+                        x = float(x)/2
+                        inds = np.append(inds,x)
+                        data = np.append(data,[path_integral(x,t,PW,k=k)])
+
+                    s = pd.Series(data,inds,name=t)
+
+                    df = pd.concat([df, s.to_frame().T])
+
+                    if np.abs(sum(data)) < max_dev: max_dev = sum(data)
+
+                    print('Light cone completely computed for t = ', t, '\n')
+
+                err[i] = max_dev
+
+                print(f'\nFor a pertubation e:{i}e-07 the greatest deviation in charge conservation is: ',
+                      max_dev, '\n')
+                
+                print(df,'\n')
+
+                try:
+                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
+                except:
+                    os.mkdir(path)
+                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
+
+            err.to_csv(path+'conserved_charge_error.csv')
+    
+def generate_conefront(q:int,
+                        tspan:int,
+                        depth:int,
+                        k:int = 0,
+                        truncate:bool = False):
+    
+    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
+    rx = re.compile(rstr)
+
+    if truncate:
+        path = f"data/truncated_conefront_k{k}/"
+    else:
+        path = "data/complete_conefront/"
+
+    for _, _, files in os.walk("data/FoldedTensors"):
+        for file in files[:]:
+
+            res = rx.match(file)
+            seed_value = res.group(1)
+
+            err = pd.Series()
+    
+            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
+                            delimiter=',',dtype='complex_')
+            
+            for i in range(1,6):
+
+                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{i}e-07_{seed_value}.csv',
+                                delimiter=',',dtype='complex_')
+
+                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+
+                df = pd.DataFrame()
+
+                max_dev = np.inf
+
+                for T in range(2*tspan-1):
+
+                    t = float(T)/2
+
+                    data = np.array([])
+                    inds = np.array([])
+
+                    for x in range(T-depth,T+1):
+                        x = float(x)/2
+                        inds = np.append(inds,x)
+                        data = np.append(data,[path_integral(x,t,PW,k=k)])
+
+                    s = pd.Series(data,inds,name=t)
+
+                    df = pd.concat([df, s.to_frame().T])
+
+                    if np.abs(sum(data)) < max_dev: max_dev = sum(data)
+
+                    print('Light cone front completely computed for t = ', t, '\n')
+
+                err[i] = max_dev
+
+                print(f'\nFor a pertubation e:{i}e-07 the greatest deviation in charge conservation is: ',
+                      max_dev, '\n')
+                
+                print(df,'\n')
+
+                try:
+                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
+                except:
+                    os.mkdir(path)
+                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
+
+            err.to_csv(path+'conserved_charge_error.csv')
+
 def path_integral(x:float,
                   t:float,
-                  W:np.ndarray):
+                  W:np.ndarray,
+                  k:int = 0):
 
     def transfer_matrix(W: np.ndarray, a: np.ndarray,
                         x: int, b: np.ndarray = [],
@@ -126,33 +224,9 @@ def path_integral(x:float,
 
         return transfer_matrix(W,a,x_h[-1],b=b,terminate=True,X=X) if len(x_h) > len(x_v) else np.einsum('a,a->',a,b)
 
-    def list_generator(x:int,data:dict,k:int=np.inf,
-                       lists:np.ndarray=[]):
-        '''
-            Generates a complete set of possible lists which can
-            combine to form a complete set 
-
-            For now just taking base case of the operator a being 
-            intially being localised to an integer position 
-        '''
-
-        if x == 0:
-            try:
-                data[len(lists)].append(lists)
-            except:
-                data[len(lists)] = [lists]
-            return
-        elif len(lists) >= k:
-            return 
-
-        for i in range(1,x+1):
-            sublist = lists.copy()
-            sublist.append(i)
-            list_generator(x-i,data,k,sublist)
-
     a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
 
-    if x == 0 and t == 0:
+    if x == 0 and t == 0.:
         return np.abs(np.einsum('a,a->',a,b))
 
     vertical_data = {}
@@ -160,7 +234,8 @@ def path_integral(x:float,
 
     x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
 
-    k = min(x_h,x_v)
+    if k > x_h or k > x_v:
+        k = min(x_h,x_v)
 
     list_generator(x_v-1,vertical_data,k=k)
     list_generator(x_h,horizontal_data,k=k)
@@ -193,6 +268,30 @@ def path_integral(x:float,
         n += 1
 
     return np.abs(sum)
+
+def list_generator(x:int,data:dict,k:int=np.inf,
+                    lists:np.ndarray=[]):
+    '''
+        Generates a complete set of possible lists which can
+        combine to form a complete set 
+
+        For now just taking base case of the operator a being 
+        intially being localised to an integer position 
+    '''
+
+    if x == 0:
+        try:
+            data[len(lists)].append(lists)
+        except:
+            data[len(lists)] = [lists]
+        return
+    elif len(lists) >= k:
+        return 
+
+    for i in range(1,x+1):
+        sublist = lists.copy()
+        sublist.append(i)
+        list_generator(x-i,data,k,sublist)
 
 def metropolis_hastings(input:np.ndarray,x:int):
 
