@@ -3,7 +3,6 @@ from scipy.optimize import minimize
 from scipy.linalg import expm 
 from W_generator import real_to_complex, complex_to_real
 import time
-import random
 import os
 import re
 
@@ -15,40 +14,41 @@ import re
 def main():
 
     q = 2
-    pertubations = [i for i in range(1,10)]
-    power = 7
-
-    generate_data(q,pertubations,power)
+    pertubations = [1e-07,3e-07,5e-07,7e-07,9e-07]
+    generate_data(q,pertubations)
 
 def generate_data(q:int,
-                  pertubations:np.ndarray,
-                  power:int):
+                  pertubations:np.ndarray):
 
-    for _, _, files in os.walk("data/FoldedTensors"):
+    for _, _, files in os.walk('data/FoldedTensors'):
         for file in files[:]:
 
-            for i in pertubations:
+            rstr = f'DU_{q}' + r'_([0-9]*).csv'
+            rx = re.compile(rstr)
 
-                e = i*(10**(-power))
+            res = rx.match(file)
+            seed = int(res[1])
 
-                rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
-                rx = re.compile(rstr)
+            np.random.seed(seed)
 
-                res = rx.match(file)
-                seed_value = int(res[1])
+            start = time.time()
 
-                random.seed(seed_value)
-                np.random.seed(seed_value)
+            P = find_P_constrained(q)
 
-                start = time.time()
-                print("\n")
+            end = time.time()
 
-                P = find_P_constrained(q)
-                G = Exponential_Map(e, P)
+            print('\nTime taken to run:',end-start)
 
-                end = time.time()
-                print("Time taken to run:",end-start)
-                print("\n")
+            for e in pertubations:
+
+                try:
+                    np.loadtxt(f'data/FoldedPertubations/P_{q}_{seed}_{e}.csv',
+                               delimiter=',',dtype='complex_')
+                    continue
+                except:
+                    pass
+
+                G = Exponential_Map(e,P)
 
                 I, Z = np.zeros(q**2), np.zeros(q**2)
                 I[0], Z[1] = 1, 1
@@ -60,30 +60,28 @@ def generate_data(q:int,
                 Q = IZ + ZI
 
                 H = np.linalg.norm(P - P.conj().T)
-                print("Check Hermiticity: ", H)
+                print('Check Hermiticity: ', H)
 
                 U1 = np.linalg.norm(np.einsum('ab,b->a',P,II))
-                print("Check Unitality: ", U1)
+                print('Check Unitality: ', U1)
 
                 Q1 = np.linalg.norm(np.einsum('ab,b->a',P,Q))
-                print("Check Q-Conservation: ", Q1)
+                print('Check Q-Conservation: ', Q1)
 
                 U2 = np.linalg.norm(np.einsum('ab,ac->bc', G, np.conj(G)) - np.eye(q**4))
-                print("Check Unitarity: ", U2)
+                print('Check Unitarity: ', U2)
 
                 U3 = np.linalg.norm(np.einsum('ab,b->a',G,II) - II)
-                print("Check Unitality: ", U3)
+                print('Check Unitality: ', U3)
 
                 Q2 = np.linalg.norm(np.einsum('ab,b->a',G,Q) - Q)
-                print("Check Q-Conservation: ", Q2)
-                
-                if H < 1e-3 and U1 < 1e-3 and Q1 < 1e-3 and U2 < 1e-3 and U3 < 1e-3 and Q2 <1e-3:
+                print('Check Q-Conservation: ', Q2, '\n')
 
-                    try:
-                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{i}e-0{power}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
-                    except:
-                        os.mkdir("./data/FoldedPertubations/")
-                        np.savetxt(f"./data/FoldedPertubations/P_{q}_{i}e-0{power}_{seed_value}.csv",G.reshape(q**4,q**4),delimiter=",")
+                try:
+                    np.savetxt(f'data/FoldedPertubations/P_{q}_{seed}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
+                except:
+                    os.mkdir('data/FoldedPertubations/')
+                    np.savetxt(f'data/FoldedPertubations/P_{q}_{seed}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
 
 def find_P_constrained(q:int):
 
@@ -109,7 +107,7 @@ def find_P_constrained(q:int):
 
     def randomise(P:np.ndarray, R:np.ndarray):
         P = real_to_complex(P)
-        return -abs(np.einsum("a,a->", np.conj(P), R))
+        return -abs(np.einsum('a,a->', np.conj(P), R))
 
     cons = [{'type':'eq', 'fun': lambda z:  Hermiticity(z)},
             {'type':'eq', 'fun': lambda z: Charge_conservation(z)}]
@@ -120,7 +118,7 @@ def find_P_constrained(q:int):
                      )
 
     P = real_to_complex(result.x).reshape([q**4 - 1,q**4 - 1])
-    Direct_Sum = np.zeros([np.shape(P)[0]+1, np.shape(P)[1]+1], dtype="complex_")
+    Direct_Sum = np.zeros([np.shape(P)[0]+1, np.shape(P)[1]+1], dtype='complex_')
     Direct_Sum[1:,1:] = P
 
     return Direct_Sum
@@ -135,5 +133,5 @@ def plot(G):
     plt.imshow(np.abs(G),cmap='hot', interpolation='nearest')
     plt.show()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
