@@ -19,15 +19,15 @@ import os
 
 def main():
 
+    q, k, tspan, depth = 2, 3, 13, 6
+
     start = time()
 
-    q, k, tspan, depth = 2, 3, 20, 6
-
-    generate_conefront(q,tspan,depth,k=k,truncate=True)
+    generate_data(q,tspan,k=k,truncate=True)
     
     end = time()
 
-    print('\nTime taken to run:', end-start)
+    print('\n Total time taken to run:', end-start)
 
 def generate_data(q:int,
                   tspan:int,
@@ -38,12 +38,12 @@ def generate_data(q:int,
     rx = re.compile(rstr)
 
     if truncate:
-        path = f"data/truncated_path_k{k}/"
+        path = f'data/truncated_path_k{k}/'
     else:
-        path = "data/complete_path/"
+        path = 'data/complete_path/'
 
-    for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files[:]:
+    for _, _, files in os.walk('data/FoldedTensors'):
+        for file in files[:1]:
 
             res = rx.match(file)
             seed_value = res.group(1)
@@ -53,142 +53,156 @@ def generate_data(q:int,
             W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
                             delimiter=',',dtype='complex_')
             
-            for i in range(1,6):
+            rstr2 = 'P_' + str(q) + '_' + seed_value + r'_([0-9e\-.]*).csv'
+            rx2 = re.compile(rstr2)
+            
+            for _, _, files in os.walk('data/FoldedPertubations'):
+                for file in files:
 
-                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{i}e-07_{seed_value}.csv',
-                                delimiter=',',dtype='complex_')
+                    res2 = rx2.match(file)
 
-                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+                    if not res2: continue
 
-                df = pd.DataFrame()
+                    e = res2.group(1)
 
-                max_dev = np.inf
+                    P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{seed_value}_{e}.csv',
+                                    delimiter=',',dtype='complex_')
 
-                for T in range(2*tspan-1):
+                    PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
 
-                    t = float(T)/2
+                    df = pd.DataFrame()
 
-                    data = np.array([])
-                    inds = np.array([])
+                    max_dev = np.inf
 
-                    for x in range(-T,T+1):
-                        x = float(x)/2
-                        inds = np.append(inds,x)
-                        data = np.append(data,[path_integral(x,t,PW,k=k)])
+                    for T in range(2*tspan-1):
 
-                    s = pd.Series(data,inds,name=t)
+                        t = float(T)/2
 
-                    df = pd.concat([df, s.to_frame().T])
+                        data = np.array([])
+                        inds = np.array([])
 
-                    if np.abs(sum(data)) < max_dev: max_dev = sum(data)
+                        for x in range(-T,T+1):
+                            x = float(x)/2
+                            inds = np.append(inds,x)
+                            data = np.append(data,[path_integral(x,t,PW,k=k)])
 
-                    print('Light cone completely computed for t = ', t, '\n')
+                        s = pd.Series(data,inds,name=t)
 
-                err[i] = max_dev
+                        df = pd.concat([df, s.to_frame().T])
 
-                print(f'\nFor a pertubation e:{i}e-07 the greatest deviation in charge conservation is: ',
-                      max_dev, '\n')
-                
-                print(df,'\n')
+                        if np.abs(sum(data)) < max_dev: max_dev = sum(data)
 
-                try:
-                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
-                except:
-                    os.mkdir(path)
-                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
+                        print('Light cone completely computed for t = ', t, '\n')
 
-            err.to_csv(path+'conserved_charge_error.csv')
+                    err[e] = max_dev
+
+                    print(f'\nFor a pertubation e:{e} the greatest deviation in charge conservation is: ',
+                        max_dev, '\n')
+                    
+                    print(df,'\n')
+
+                    try:
+                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
+                    except:
+                        os.mkdir(path)
+                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
+
+                err.to_csv(path+'conserved_charge_error.csv')
     
 def generate_conefront(q:int,
-                        tspan:int,
-                        depth:int,
-                        k:int = 0,
-                        truncate:bool = False):
+                       tspan:int,
+                       depth:int,
+                       k:int = 0,
+                       truncate:bool = False):
     
     rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
     rx = re.compile(rstr)
 
     if truncate:
-        path = f"data/truncated_conefront_k{k}/"
+        path = f'data/truncated_conefront_k{k}/'
     else:
-        path = "data/complete_conefront/"
+        path = 'data/complete_conefront/'
 
-    for _, _, files in os.walk("data/FoldedTensors"):
-        for file in files[:]:
+    for _, _, files in os.walk('data/FoldedTensors'):
+        for file in files[:1]:
 
             res = rx.match(file)
             seed_value = res.group(1)
-
-            err = pd.Series()
     
             W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
                             delimiter=',',dtype='complex_')
             
-            for i in range(1,6):
+            rstr2 = 'P_' + str(q) + '_' + seed_value + r'_([0-9e\-.]*).csv'
+            rx2 = re.compile(rstr2)
+            
+            for _, _, files in os.walk('data/FoldedPertubations'):
+                for file in files:
 
-                P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{i}e-07_{seed_value}.csv',
-                                delimiter=',',dtype='complex_')
+                    res2 = rx2.match(file)
 
-                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+                    if not res2: continue
 
-                df = pd.DataFrame()
+                    e = res2.group(1)
 
-                max_dev = np.inf
+                    P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{seed_value}_{e}.csv',
+                                    delimiter=',',dtype='complex_')
 
-                for T in range(2*tspan-1):
+                    PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
 
-                    t = float(T)/2
+                    df = pd.DataFrame()
 
-                    data = np.array([])
-                    inds = np.array([])
+                    max_dev = np.inf
 
-                    for x in range(T-depth,T+1):
-                        x = float(x)/2
-                        inds = np.append(inds,x)
-                        data = np.append(data,[path_integral(x,t,PW,k=k)])
+                    for T in range(2*tspan-1):
 
-                    s = pd.Series(data,inds,name=t)
+                        t = float(T)/2
 
-                    df = pd.concat([df, s.to_frame().T])
+                        data = np.array([])
+                        inds = np.array([])
 
-                    if np.abs(sum(data)) < max_dev: max_dev = sum(data)
+                        for x in range(T-depth,T+1):
+                            x = float(x)/2
+                            inds = np.append(inds,x)
+                            data = np.append(data,[path_integral(x,t,PW,k=k)])
 
-                    print('Light cone front completely computed for t = ', t, '\n')
+                        s = pd.Series(data,inds,name=t)
 
-                err[i] = max_dev
+                        df = pd.concat([df, s.to_frame().T])
 
-                print(f'\nFor a pertubation e:{i}e-07 the greatest deviation in charge conservation is: ',
-                      max_dev, '\n')
-                
-                print(df,'\n')
+                        if np.abs(sum(data)) < max_dev: max_dev = sum(data)
 
-                try:
-                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
-                except:
-                    os.mkdir(path)
-                    df.to_csv(path+f'heatmap_{q}_{i}e-07_{seed_value}.csv')
+                        print('Light cone completely computed for t = ', t, '\n')
 
-            err.to_csv(path+'conserved_charge_error.csv')
+                    print(f'\nFor a pertubation e:{e} the greatest deviation in charge conservation is: ',
+                        max_dev, '\n')
+                    
+                    print(df,'\n')
+
+                    try:
+                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
+                    except:
+                        os.mkdir(path)
+                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
 
 def path_integral(x:float,
                   t:float,
                   W:np.ndarray,
                   k:int = 0):
 
-    def transfer_matrix(W: np.ndarray, a: np.ndarray,
-                        x: int, b: np.ndarray = [],
-                        horizontal: bool = True,
-                        terminate: bool = False,
-                        X: float = 0):
+    def transfer_matrix(W:np.ndarray, a:np.ndarray,
+                        x:int, b:np.ndarray = [],
+                        horizontal:bool = True,
+                        terminate:bool = False,
+                        X:float = 0):
 
-        """
+        '''
             A transfer matrix can either be horizontal or vertical row of contracted
             folded tensors. 
             For the case of a horizontal transfer matrix the row can only be terminated
             either by a defect or by the operator b
 
             a can be like [0,1,0,0]
-        """
+        '''
 
         if horizontal:
             direct = W[0,:,:,0]
@@ -212,7 +226,7 @@ def path_integral(x:float,
             return np.einsum('a,a->',b,a)
         
     def skeleton(x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
-                a:np.ndarray, b:np.ndarray, X:float = 0):
+                 a:np.ndarray, b:np.ndarray, X:float = 0):
         '''
             Computes a contribution to the path integral of the
             input skeleton diagram
@@ -224,7 +238,7 @@ def path_integral(x:float,
 
         return transfer_matrix(W,a,x_h[-1],b=b,terminate=True,X=X) if len(x_h) > len(x_v) else np.einsum('a,a->',a,b)
 
-    a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
+    a, b = np.array([0,1,0,0],dtype='complex_'), np.array([0,1,0,0],dtype='complex_')
 
     if x == 0 and t == 0.:
         return np.abs(np.einsum('a,a->',a,b))
@@ -234,7 +248,7 @@ def path_integral(x:float,
 
     x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
 
-    if k > x_h or k > x_v:
+    if k > x_h or k > x_v or not k:
         k = min(x_h,x_v)
 
     list_generator(x_v-1,vertical_data,k=k)
