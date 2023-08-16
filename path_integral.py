@@ -19,106 +19,101 @@ import os
 
 def main():
 
-    q, k, tspan, depth = 2, 3, 13, 6
+    q, k, tspan, depth = 2, 3, 10, 6
+
+    pertubations = [7e-08]
 
     start = time()
 
-    generate_data(q,tspan,k=k,truncate=True)
+    generate_data(q,tspan,pertubations)
     
     end = time()
 
-    print('\n Total time taken to run:', end-start)
+    print('Total time taken to run:', end-start, '\n')
 
 def generate_data(q:int,
                   tspan:int,
-                  k:int = 0,
-                  truncate:bool = False):
+                  pertubations:np.ndarray,
+                  k:int = 0):
 
     rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
     rx = re.compile(rstr)
 
-    if truncate:
-        path = f'data/truncated_path_k{k}/'
+    if k:
+        path = 'data/PathIntegralTruncated'
     else:
-        path = 'data/complete_path/'
+        path = 'data/PathIntegral'
 
     for _, _, files in os.walk('data/FoldedTensors'):
         for file in files[:1]:
 
             res = rx.match(file)
-            seed_value = res.group(1)
-
-            err = pd.Series()
+            seed = res.group(1)
     
-            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
+            W = np.loadtxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',
                             delimiter=',',dtype='complex_')
             
-            rstr2 = 'P_' + str(q) + '_' + seed_value + r'_([0-9e\-.]*).csv'
-            rx2 = re.compile(rstr2)
+            # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
+            # rx2 = re.compile(rstr2)
             
-            for _, _, files in os.walk('data/FoldedPertubations'):
-                for file in files:
+            for e in pertubations:
 
-                    res2 = rx2.match(file)
+                # res2 = rx2.match(file)
 
-                    if not res2: continue
+                # if not res2: continue
 
-                    e = res2.group(1)
+                # e = res2.group(1)
 
-                    P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{seed_value}_{e}.csv',
-                                    delimiter=',',dtype='complex_')
+                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{e}.csv',
+                                delimiter=',',dtype='complex_')
 
-                    PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
 
-                    df = pd.DataFrame()
+                df = pd.DataFrame()
+                err = pd.Series()
 
-                    max_dev = np.inf
+                for T in range(2*tspan+1):
 
-                    for T in range(2*tspan-1):
+                    t = float(T)/2
 
-                        t = float(T)/2
+                    data = np.array([])
+                    inds = np.array([])
 
-                        data = np.array([])
-                        inds = np.array([])
+                    for x in range(-T,T+1):
+                        x = float(x)/2
+                        inds = np.append(inds,x)
+                        data = np.append(data,[path_integral(x,t,PW,k=k)])
 
-                        for x in range(-T,T+1):
-                            x = float(x)/2
-                            inds = np.append(inds,x)
-                            data = np.append(data,[path_integral(x,t,PW,k=k)])
+                    s = pd.Series(data,inds,name=t)
 
-                        s = pd.Series(data,inds,name=t)
+                    df = pd.concat([df, s.to_frame().T])
+                    err[t] = np.abs(sum(data))
+                
+                df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
+                df = df.fillna(0)
+                print(df,'\n')
 
-                        df = pd.concat([df, s.to_frame().T])
+                try:
+                    df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
+                except:
+                    os.mkdir(path)
+                    df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
 
-                        if np.abs(sum(data)) < max_dev: max_dev = sum(data)
+                try:
+                    err.to_csv(f'{path}/charge_conservation/{q}_{seed}_{e}.csv', index=False)
+                except:
+                    os.mkdir(f'{path}/charge_conservation')
+                    err.to_csv(f'{path}/charge_conservation/{q}_{seed}_{e}.csv', index=False)
 
-                        print('Light cone completely computed for t = ', t, '\n')
-
-                    err[e] = max_dev
-
-                    print(f'\nFor a pertubation e:{e} the greatest deviation in charge conservation is: ',
-                        max_dev, '\n')
-                    
-                    print(df,'\n')
-
-                    try:
-                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
-                    except:
-                        os.mkdir(path)
-                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
-
-                err.to_csv(path+'conserved_charge_error.csv')
-    
 def generate_conefront(q:int,
                        tspan:int,
                        depth:int,
-                       k:int = 0,
-                       truncate:bool = False):
+                       k:int = 0):
     
     rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
     rx = re.compile(rstr)
 
-    if truncate:
+    if k:
         path = f'data/truncated_conefront_k{k}/'
     else:
         path = 'data/complete_conefront/'
@@ -127,12 +122,12 @@ def generate_conefront(q:int,
         for file in files[:1]:
 
             res = rx.match(file)
-            seed_value = res.group(1)
+            seed = res.group(1)
     
-            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed_value}.csv',
+            W = np.loadtxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',
                             delimiter=',',dtype='complex_')
             
-            rstr2 = 'P_' + str(q) + '_' + seed_value + r'_([0-9e\-.]*).csv'
+            rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
             rx2 = re.compile(rstr2)
             
             for _, _, files in os.walk('data/FoldedPertubations'):
@@ -144,7 +139,7 @@ def generate_conefront(q:int,
 
                     e = res2.group(1)
 
-                    P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{seed_value}_{e}.csv',
+                    P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{e}.csv',
                                     delimiter=',',dtype='complex_')
 
                     PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
@@ -153,7 +148,7 @@ def generate_conefront(q:int,
 
                     max_dev = np.inf
 
-                    for T in range(2*tspan-1):
+                    for T in range(2*tspan+1):
 
                         t = float(T)/2
 
@@ -168,6 +163,7 @@ def generate_conefront(q:int,
                         s = pd.Series(data,inds,name=t)
 
                         df = pd.concat([df, s.to_frame().T])
+                        df = df.fillna(0)
 
                         if np.abs(sum(data)) < max_dev: max_dev = sum(data)
 
@@ -179,10 +175,10 @@ def generate_conefront(q:int,
                     print(df,'\n')
 
                     try:
-                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
+                        df.to_csv(path+f'heatmap_{q}_{seed}_{e}.csv')
                     except:
                         os.mkdir(path)
-                        df.to_csv(path+f'heatmap_{q}_{seed_value}_{e}.csv')
+                        df.to_csv(path+f'heatmap_{q}_{seed}_{e}.csv')
 
 def path_integral(x:float,
                   t:float,
@@ -281,7 +277,7 @@ def path_integral(x:float,
 
         n += 1
 
-    return np.abs(sum)
+    return sum
 
 def list_generator(x:int,data:dict,k:int=np.inf,
                     lists:np.ndarray=[]):
