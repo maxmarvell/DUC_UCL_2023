@@ -18,7 +18,6 @@ def main():
 def generate_data(q:int):
 
     seed_value = random.randrange(2**32 - 1)
-    random.seed(seed_value)
     np.random.seed(seed_value)
 
     start = time()

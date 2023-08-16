@@ -4,7 +4,6 @@ from scipy.linalg import expm
 from W_generator import real_to_complex, complex_to_real
 import time
 import os
-import re
 
 '''
     Code to generate pertubations in the folded picture.
@@ -12,76 +11,60 @@ import re
 '''
 
 def main():
-
-    q = 2
-    pertubations = [1e-07,3e-07,5e-07,7e-07,9e-07]
-    generate_data(q,pertubations)
+    np.random.seed(24)
+    pertubations = [7e-8]
+    generate_data(2,pertubations)
 
 def generate_data(q:int,
                   pertubations:np.ndarray):
 
-    for _, _, files in os.walk('data/FoldedTensors'):
-        for file in files[:]:
+    start = time.time()
 
-            rstr = f'DU_{q}' + r'_([0-9]*).csv'
-            rx = re.compile(rstr)
+    P = find_P_constrained(q)
 
-            res = rx.match(file)
-            seed = int(res[1])
+    end = time.time()
 
-            np.random.seed(seed)
+    print('\nTime taken to generate pertubation:',end-start)
 
-            start = time.time()
+    H = np.linalg.norm(P - P.conj().T)
+    print('     Check Hermiticity of P: ', H)
 
-            P = find_P_constrained(q)
+    U1 = np.linalg.norm(np.einsum('ab,b->a',P,II))
+    print('     Check Unitality of P: ', U1)
 
-            end = time.time()
+    Q1 = np.linalg.norm(np.einsum('ab,b->a',P,Q))
+    print('     Check Q-Conservation of P: ', Q1)
 
-            print('\nTime taken to run:',end-start)
+    for e in pertubations:
 
-            for e in pertubations:
+        G = Exponential_Map(e,P)
 
-                try:
-                    np.loadtxt(f'data/FoldedPertubations/P_{q}_{seed}_{e}.csv',
-                               delimiter=',',dtype='complex_')
-                    continue
-                except:
-                    pass
+        I, Z = np.zeros(q**2), np.zeros(q**2)
+        I[0], Z[1] = 1, 1
 
-                G = Exponential_Map(e,P)
+        IZ = np.einsum('a,b->ab',I,Z).flatten()
+        ZI = np.einsum('a,b->ab',Z,I).flatten()
+        II = np.einsum('a,b->ab',I,I).flatten()
 
-                I, Z = np.zeros(q**2), np.zeros(q**2)
-                I[0], Z[1] = 1, 1
+        Q = IZ + ZI
 
-                IZ = np.einsum('a,b->ab',I,Z).flatten()
-                ZI = np.einsum('a,b->ab',Z,I).flatten()
-                II = np.einsum('a,b->ab',I,I).flatten()
+        U2 = np.linalg.norm(np.einsum('ab,ac->bc', G, np.conj(G)) - np.eye(q**4))
+        print('     Check Unitarity of G: ', U2)
 
-                Q = IZ + ZI
+        U3 = np.linalg.norm(np.einsum('ab,b->a',G,II) - II)
+        print('     Check Unitality of G: ', U3)
 
-                H = np.linalg.norm(P - P.conj().T)
-                print('Check Hermiticity: ', H)
+        Q2 = np.linalg.norm(np.einsum('ab,b->a',G,Q) - Q)
+        print('     Check Q-Conservation of G: ', Q2, '\n')
 
-                U1 = np.linalg.norm(np.einsum('ab,b->a',P,II))
-                print('Check Unitality: ', U1)
-
-                Q1 = np.linalg.norm(np.einsum('ab,b->a',P,Q))
-                print('Check Q-Conservation: ', Q1)
-
-                U2 = np.linalg.norm(np.einsum('ab,ac->bc', G, np.conj(G)) - np.eye(q**4))
-                print('Check Unitarity: ', U2)
-
-                U3 = np.linalg.norm(np.einsum('ab,b->a',G,II) - II)
-                print('Check Unitality: ', U3)
-
-                Q2 = np.linalg.norm(np.einsum('ab,b->a',G,Q) - Q)
-                print('Check Q-Conservation: ', Q2, '\n')
-
-                try:
-                    np.savetxt(f'data/FoldedPertubations/P_{q}_{seed}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
-                except:
-                    os.mkdir('data/FoldedPertubations/')
-                    np.savetxt(f'data/FoldedPertubations/P_{q}_{seed}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
+        if H < 1e-3 and U1 < 1e-3 and Q1 < 1e-3 and U2 < 1e-3 and U3 < 1e-3 and Q2 < 1e-3:
+            try:
+                np.savetxt(f'data/FoldedPertubations/P_{q}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
+            except:
+                os.mkdir('data/FoldedPertubations/')
+                np.savetxt(f'data/FoldedPertubations/P_{q}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
+        else:
+            print('Failed to converge for this seed!')
 
 def find_P_constrained(q:int):
 
