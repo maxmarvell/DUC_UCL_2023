@@ -21,11 +21,11 @@ def main():
 
     q, k, tspan, depth = 2, 3, 10, 6
 
-    pertubations = [7e-08]
+    pertubations = [5e-08,7e-08,1e-07,3e-07,5e-07]
 
     start = time()
 
-    generate_data(q,tspan,pertubations)
+    generate_conefront(q,tspan,pertubations,depth)
     
     end = time()
 
@@ -107,6 +107,7 @@ def generate_data(q:int,
 
 def generate_conefront(q:int,
                        tspan:int,
+                       pertubations:np.ndarray,
                        depth:int,
                        k:int = 0):
     
@@ -114,9 +115,9 @@ def generate_conefront(q:int,
     rx = re.compile(rstr)
 
     if k:
-        path = f'data/truncated_conefront_k{k}/'
+        path = f'data/ConefrontTruncated'
     else:
-        path = 'data/complete_conefront/'
+        path = 'data/Conefront'
 
     for _, _, files in os.walk('data/FoldedTensors'):
         for file in files[:1]:
@@ -127,58 +128,49 @@ def generate_conefront(q:int,
             W = np.loadtxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',
                             delimiter=',',dtype='complex_')
             
-            rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
-            rx2 = re.compile(rstr2)
+            # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
+            # rx2 = re.compile(rstr2)
             
-            for _, _, files in os.walk('data/FoldedPertubations'):
-                for file in files:
+            for e in pertubations:
 
-                    res2 = rx2.match(file)
+                # res2 = rx2.match(file)
 
-                    if not res2: continue
+                # if not res2: continue
 
-                    e = res2.group(1)
+                # e = res2.group(1)
 
-                    P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{e}.csv',
-                                    delimiter=',',dtype='complex_')
+                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{e}.csv',
+                                delimiter=',',dtype='complex_')
 
-                    PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
 
-                    df = pd.DataFrame()
+                df = pd.DataFrame()
 
-                    max_dev = np.inf
+                for T in range(2*tspan+1):
 
-                    for T in range(2*tspan+1):
+                    t = float(T)/2
 
-                        t = float(T)/2
+                    data = np.array([])
+                    inds = np.array([])
 
-                        data = np.array([])
-                        inds = np.array([])
+                    for x in range(T-depth,T+1):
+                        x = float(x)/2
+                        inds = np.append(inds,x)
+                        data = np.append(data,[path_integral(x,t,PW,k=k)])
 
-                        for x in range(T-depth,T+1):
-                            x = float(x)/2
-                            inds = np.append(inds,x)
-                            data = np.append(data,[path_integral(x,t,PW,k=k)])
+                    s = pd.Series(data,inds,name=t)
+                    df = pd.concat([df, s.to_frame().T])
+                
+                df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
+                df = df.fillna(0)
+                df = df.iloc[:,depth:]
+                print(df,'\n')
 
-                        s = pd.Series(data,inds,name=t)
-
-                        df = pd.concat([df, s.to_frame().T])
-                        df = df.fillna(0)
-
-                        if np.abs(sum(data)) < max_dev: max_dev = sum(data)
-
-                        print('Light cone completely computed for t = ', t, '\n')
-
-                    print(f'\nFor a pertubation e:{e} the greatest deviation in charge conservation is: ',
-                        max_dev, '\n')
-                    
-                    print(df,'\n')
-
-                    try:
-                        df.to_csv(path+f'heatmap_{q}_{seed}_{e}.csv')
-                    except:
-                        os.mkdir(path)
-                        df.to_csv(path+f'heatmap_{q}_{seed}_{e}.csv')
+                try:
+                    df.to_csv(path+f'/{q}_{seed}_{e}.csv')
+                except:
+                    os.mkdir(path)
+                    df.to_csv(path+f'/{q}_{seed}_{e}.csv')
 
 def path_integral(x:float,
                   t:float,
