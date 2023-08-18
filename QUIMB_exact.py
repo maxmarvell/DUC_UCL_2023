@@ -1,4 +1,5 @@
 from time import time
+from P_generator import Exponential_Map
 import quimb.tensor as qtn
 import pandas as pd
 import numpy as np
@@ -17,14 +18,15 @@ def main():
 
     start = time()
 
-    generate_data(q,8)
+    generate_data(q,9)
 
     end = time()
 
     print('\nTotal time taken to run:', end-start)
 
 def generate_data(q:int,
-                  tspan:int):
+                  tspan:int,
+                  pertubations:np.ndarray):
 
     rstr = f'DU_{q}_' + r'([0-9]*).csv'
     rx = re.compile(rstr)
@@ -38,62 +40,67 @@ def generate_data(q:int,
             W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed}.csv',
                             delimiter=',',dtype='complex_')
             
-            rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
-            rx2 = re.compile(rstr2)
+            # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
+            # rx2 = re.compile(rstr2)
             
-            for _, _, files in os.walk('data/FoldedPertubations'):
-                for file in files:
+            # for _, _, files in os.walk('data/FoldedPertubations'):
+            #     for file in files:
 
-                    res2 = rx2.match(file)
-                    e = res2.group(1)
+            #         res2 = rx2.match(file)
+            #         e = res2.group(1)
 
-                    if not res2:
-                        continue
+                    # if not res2:
+                    #     continue
 
-                    start = time()
+            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
+                           delimiter=',',dtype='complex_')
 
-                    df = pd.DataFrame()
+            for e in pertubations:
 
-                    P = np.loadtxt(f'./data/FoldedPertubations/P_{q}_{e}.csv',
-                                    delimiter=',',dtype='complex_')
+                G = Exponential_Map(e,P)
+                PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
 
-                    pW = np.einsum('ab,bc->ac',P,W)
+                df = pd.DataFrame()
+                err = pd.Series()
 
-                    err = pd.Series()
+                start = time()
 
-                    for T in range(2*tspan+1):
+                for T in range(2*tspan,2*tspan+1):
 
-                        t = float(T)/2
+                    t = float(T)/2
 
-                        data = np.array([],dtype='complex_')
+                    data = np.array([],dtype='complex_')
 
-                        for x in range(-T,T+1):
+                    for x in range(-T,T+1):
 
-                            x = float(x) / 2
-                            data = np.append(data,exact_contraction(x,t,q,pW))
+                        x = float(x) / 2
+                        data = np.append(data,exact_contraction(x,t,q,PW))
 
-                        s = pd.Series(data,range(-T,T+1),name=t)
+                    s = pd.Series(data,range(-T,T+1),name=t)
 
-                        df = pd.concat([df, s.to_frame().T])
+                    df = pd.concat([df, s.to_frame().T])
 
-                        err[t] = np.abs(sum(data))
+                    err[t] = np.abs(sum(data))
 
-                        print('Light cone slice computed for t = ', t, '\n')
+                end = time()
 
-                    print(df)
+                df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
+                df = df.fillna(0)
+                print(df,'\n')
 
-                    end = time()
+                print('Time taken to compute light cone: ', end-start)
 
-                    print('Time taken to compute light cone: ', end-start)
+                try:
+                    df.to_csv(f'diffusive_data/data_e{e}_T12.csv', index=False)
+                except:
+                    os.mkdir('diffusive_data')
+                    df.to_csv(f'diffusive_data/data_e{e}_T12.csv', index=False)
 
-                    try:
-                        df.to_csv(f'data/TensorExact/{q}_{seed}_{e}.csv', index=False)
-                        err.to_csv(f'data/TensorExact/charge_conservation/{q}_{seed}_{e}.csv', index=False)
-                    except:
-                        os.mkdir('data/TensorExact')
-                        os.mkdir('data/TensorExact/charge_conservation')
-                        df.to_csv(f'data/TensorExact/{q}_{seed}_{e}.csv', index=False)
-                        err.to_csv(f'data/TensorExact/charge_conservation/{q}_{seed}_{e}.csv', index=False)
+                try:
+                    err.to_csv(f'diffusive_data/charge_conservation/test{e}.csv', index=False)
+                except:
+                    os.mkdir('diffusive_data/charge_conservation')
+                    err.to_csv(f'diffusive_data/charge_conservation/test{e}.csv', index=False)
 
 def exact_contraction(x:float,
                       t:float,
