@@ -1,4 +1,5 @@
 from time import time
+from P_generator import Exponential_Map
 import pandas as pd
 import numpy as np
 import random
@@ -21,11 +22,11 @@ def main():
 
     q, k, tspan, depth = 2, 3, 10, 6
 
-    pertubations = [5e-08,7e-08,1e-07,3e-07,5e-07]
+    pertubations = [3e-07,5e-07]
 
     start = time()
 
-    generate_conefront(q,tspan,pertubations,depth)
+    generate_data(q,tspan,pertubations,k=k)
     
     end = time()
 
@@ -64,10 +65,23 @@ def generate_data(q:int,
 
                 # e = res2.group(1)
 
-                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{e}.csv',
+                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
                                 delimiter=',',dtype='complex_')
+                
+                G = Exponential_Map(e,P)
 
-                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+                PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
+
+                I, Z = np.zeros(q**2), np.zeros(q**2)
+                I[0], Z[1] = 1, 1
+
+                IZ = np.einsum('a,b->ab',I,Z).flatten()
+                ZI = np.einsum('a,b->ab',Z,I).flatten()
+
+                Q = IZ + ZI
+
+                Q2 = np.linalg.norm(np.einsum('ab,b->a',PW.reshape(q**4,q**4),Q) - Q)
+                print('\n     Check Q-Conservation of peturbed P: ', Q2, '\n')
 
                 df = pd.DataFrame()
                 err = pd.Series()
@@ -139,10 +153,12 @@ def generate_conefront(q:int,
 
                 # e = res2.group(1)
 
-                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{e}.csv',
+                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
                                 delimiter=',',dtype='complex_')
+                
+                G = Exponential_Map(e,P)
 
-                PW = np.einsum('ab,bc->ac',P,W).reshape(q**2,q**2,q**2,q**2)
+                PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
 
                 df = pd.DataFrame()
 
@@ -199,18 +215,20 @@ def path_integral(x:float,
             direct = W[:,0,0,:]
             defect = W[0,:,0,:]
 
-        if x > 1:
-            for _ in range(x-2):
-                a = np.einsum('ba,a->b',direct,a)
-
         if not terminate:
-            a = np.einsum('ba,a->b',direct,a)
-            return np.einsum('ba,a->b',defect,a)
+            for _ in range(x-1):
+                a = np.einsum('ab,b->a',direct,a)
+            return np.einsum('ab,b->a',defect,a)
+
+        elif terminate and (int(2*(t+X))%2 == 0):
+            for _ in range(x):
+                a = np.einsum('ab,b->a',direct,a)
+            return np.einsum('a,a->',b,a)
+
         else:
-            if int(2*(t+X))%2 == 0:
-                a = np.einsum('ba,a->b',direct,a)
-            else:
-                a = np.einsum('ba,a->b',defect,a)
+            for _ in range(x-1):
+                a = np.einsum('ab,b->a',direct,a)
+            a = np.einsum('ab,b->a',defect,a)
             return np.einsum('a,a->',b,a)
         
     def skeleton(x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
@@ -229,7 +247,7 @@ def path_integral(x:float,
     a, b = np.array([0,1,0,0],dtype='complex_'), np.array([0,1,0,0],dtype='complex_')
 
     if x == 0 and t == 0.:
-        return np.abs(np.einsum('a,a->',a,b))
+        return np.einsum('a,a->',a,b)
 
     vertical_data = {}
     horizontal_data = {}
@@ -239,7 +257,7 @@ def path_integral(x:float,
     if k > x_h or k > x_v or not k:
         k = min(x_h,x_v)
 
-    list_generator(x_v-1,vertical_data,k=k)
+    list_generator(x_v-1,vertical_data)
     list_generator(x_h,horizontal_data,k=k)
 
     n = 1
@@ -262,7 +280,7 @@ def path_integral(x:float,
         except:pass
                         
         try:
-            l1, v = horizontal_data[1], vertical_data[0]
+            l1, v = horizontal_data[n], vertical_data[0]
             for h in l1:
                 sum += skeleton(h,[],W,a,b,X=x)
         except:pass
