@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.linalg import expm 
 from W_generator import real_to_complex, complex_to_real
+import random
 import time
 import os
 
@@ -11,12 +12,12 @@ import os
 '''
 
 def main():
-    np.random.seed(24)
-    pertubations = [7e-8]
-    generate_data(2,pertubations)
+    generate_data(2)
 
-def generate_data(q:int,
-                  pertubations:np.ndarray):
+def generate_data(q:int):
+
+    seed = random.randrange(2**32 - 1)
+    np.random.seed(seed)
 
     start = time.time()
 
@@ -25,6 +26,15 @@ def generate_data(q:int,
     end = time.time()
 
     print('\nTime taken to generate pertubation:',end-start)
+
+    I, Z = np.zeros(q**2), np.zeros(q**2)
+    I[0], Z[1] = 1, 1
+
+    II = np.einsum('a,b->ab',I,I).flatten()
+    IZ = np.einsum('a,b->ab',I,Z).flatten()
+    ZI = np.einsum('a,b->ab',Z,I).flatten()
+
+    Q = IZ + ZI
 
     H = np.linalg.norm(P - P.conj().T)
     print('     Check Hermiticity of P: ', H)
@@ -35,36 +45,27 @@ def generate_data(q:int,
     Q1 = np.linalg.norm(np.einsum('ab,b->a',P,Q))
     print('     Check Q-Conservation of P: ', Q1)
 
-    for e in pertubations:
+    e = 0.1
 
-        G = Exponential_Map(e,P)
+    G = Exponential_Map(e,P)
 
-        I, Z = np.zeros(q**2), np.zeros(q**2)
-        I[0], Z[1] = 1, 1
+    U2 = np.linalg.norm(np.einsum('ab,ac->bc', G, np.conj(G)) - np.eye(q**4))
+    print('     Check Unitarity of G: ', U2)
 
-        IZ = np.einsum('a,b->ab',I,Z).flatten()
-        ZI = np.einsum('a,b->ab',Z,I).flatten()
-        II = np.einsum('a,b->ab',I,I).flatten()
+    U3 = np.linalg.norm(np.einsum('ab,b->a',G,II) - II)
+    print('     Check Unitality of G: ', U3)
 
-        Q = IZ + ZI
+    Q2 = np.linalg.norm(np.einsum('ab,b->a',G,Q) - Q)
+    print('     Check Q-Conservation of G: ', Q2, '\n')
 
-        U2 = np.linalg.norm(np.einsum('ab,ac->bc', G, np.conj(G)) - np.eye(q**4))
-        print('     Check Unitarity of G: ', U2)
-
-        U3 = np.linalg.norm(np.einsum('ab,b->a',G,II) - II)
-        print('     Check Unitality of G: ', U3)
-
-        Q2 = np.linalg.norm(np.einsum('ab,b->a',G,Q) - Q)
-        print('     Check Q-Conservation of G: ', Q2, '\n')
-
-        if H < 1e-3 and U1 < 1e-3 and Q1 < 1e-3 and U2 < 1e-3 and U3 < 1e-3 and Q2 < 1e-3:
-            try:
-                np.savetxt(f'data/FoldedPertubations/P_{q}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
-            except:
-                os.mkdir('data/FoldedPertubations/')
-                np.savetxt(f'data/FoldedPertubations/P_{q}_{e}.csv',G.reshape(q**4,q**4),delimiter=',')
-        else:
-            print('Failed to converge for this seed!')
+    if H < 1e-3 and U1 < 1e-3 and Q1 < 1e-3 and U2 < 1e-3 and U3 < 1e-3 and Q2 < 1e-3:
+        try:
+            np.savetxt(f'data/FoldedPertubations/P_{q}_{seed}.csv',P.reshape(q**4,q**4),delimiter=',')
+        except:
+            os.mkdir('data/FoldedPertubations/')
+            np.savetxt(f'data/FoldedPertubations/P_{q}_{seed}.csv',P.reshape(q**4,q**4),delimiter=',')
+    else:
+        print('Failed to converge for this seed!\n')
 
 def find_P_constrained(q:int):
 
