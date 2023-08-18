@@ -9,9 +9,9 @@ import re
 def main():
 
     q = 2
-    e = [1e-07,3e-07,5e-07]
+    e = [1e-07]
     tspan = 10
-    temp = 0.1
+    temp = 0.7
 
     for i in e:
         generate_data(q,tspan,i,temp)
