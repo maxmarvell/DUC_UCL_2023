@@ -17,11 +17,11 @@ def main():
     
 def generate_data(q:int):
 
-    seed_value = random.randrange(2**32 - 1)
-    np.random.seed(seed_value)
+    seed = random.randrange(2**32 - 1)
+    np.random.seed(seed)
 
     start = time()
-    print("\n")
+    print('\n')
 
     W = initialize_W(q)
     indices = np.argwhere(np.isnan(W))
@@ -29,37 +29,36 @@ def generate_data(q:int):
     repack_W(indices,results,W)
 
     end = time()
-    print(end-start)
-    print("\n")
 
-    print(W)
-    print("\n")
+    print(f'Time taken to generate W:{end-start}\n')
 
-    II = np.einsum("ac,bd->abcd", np.identity(q**2), np.identity(q**2))
     I, Z = np.zeros(q**2), np.zeros(q**2)
     I[0], Z[1] = 1, 1
+
     IZ = np.einsum('a,b->ab',I,Z)
     ZI = np.einsum('a,b->ab',Z,I)
+
+    II = np.einsum('ac,bd->abcd', np.identity(q**2), np.identity(q**2))
     
     N = np.linalg.norm(W)/(q**2)
-    print("Normalised:", np.linalg.norm(W)/(q**2))
+    print('    Checking W Normalised:', np.linalg.norm(W)/(q**2))
 
     U = np.linalg.norm(np.einsum('abcd,efcd -> abef', W, np.conj(W))-II)
-    print("Check unitarity: ", U)
+    print('    Checking W unitarity: ', U)
 
     DU = np.linalg.norm(np.einsum('fbea,fdec->abcd',np.conj(W),W)-II)
-    print("Check dual unitarity: ", DU)
+    print('    Checking W dual unitarity: ', DU)
 
     S = np.linalg.norm(np.einsum('abcd,cd->ab',W,ZI)-IZ) + np.linalg.norm(np.einsum('abcd,cd->ab',W,IZ)-ZI)
-    print("Check Z is a soliton: ", S)
+    print('    Checking W has Z as a soliton: ', S)
     
     if U < 1e-3 and DU < 1e-3 and S < 1e-3 and abs(N - 1) < 1e-3:
         
         try:
-            np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
+            np.savetxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',W.reshape(q**4,q**4),delimiter=',')
         except:
-            os.mkdir("./data/FoldedTensors/")
-            np.savetxt(f"./data/FoldedTensors/DU_{q}_{seed_value}.csv",W.reshape(q**4,q**4),delimiter=",")
+            os.mkdir('data/FoldedTensors/')
+            np.savetxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',W.reshape(q**4,q**4),delimiter=',')
 
 def real_to_complex(z):
     return z[:len(z)//2] + 1j * z[len(z)//2:]
@@ -69,7 +68,7 @@ def complex_to_real(z):
 
 def initialize_W(q:int):
 
-    W = np.full(shape=[q**2,q**2,q**2,q**2], fill_value=np.nan, dtype="complex_")
+    W = np.full(shape=[q**2,q**2,q**2,q**2], fill_value=np.nan, dtype='complex_')
     W[0,0,0,0] = 1
 
     for i in  range(q**2):
@@ -94,7 +93,7 @@ def repack_W(indices,X,W):
                 W[*index] = i
         
 def randomise(X, R):
-    return -abs(np.einsum("a,a->", np.conj(X), R))
+    return -abs(np.einsum('a,a->', np.conj(X), R))
 
 def find_W_constrained(q):
 
@@ -105,13 +104,13 @@ def find_W_constrained(q):
     def unitarity(indices,X,W):
 
         repack_W(indices,X,W)
-        II = np.einsum("ac,bd->abcd", np.identity(q**2), np.identity(q**2))
+        II = np.einsum('ac,bd->abcd', np.identity(q**2), np.identity(q**2))
         return np.linalg.norm(np.einsum('abcd,efcd -> abef', W, np.conj(W)) - II)
 
     def dual_unitarity(indices,X,W):
 
         repack_W(indices,X,W)
-        II = np.einsum("ac,bd->abcd", np.identity(q**2), np.identity(q**2))
+        II = np.einsum('ac,bd->abcd', np.identity(q**2), np.identity(q**2))
         return np.linalg.norm(np.einsum('fbea,fdec->abcd', np.conj(W), W)-II)
 
     def soliton(indices,X,W):
@@ -137,6 +136,6 @@ def find_W_constrained(q):
         
     return real_to_complex(result.x)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     for _ in range(5):
         main()
