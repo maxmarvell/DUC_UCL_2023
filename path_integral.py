@@ -1,22 +1,11 @@
+import numpy as np
 from time import time
 from P_generator import Exponential_Map
 import pandas as pd
-import numpy as np
-import random
-import sys
-import math
-import re
-import os
+import matplotlib.pyplot as plt
+from scipy.linalg import expm 
 
-'''
-    Computing the correlation function only where opertor a is initially localised to x 
-    , where x is an integer, and operator b is localised to some point y at time 2t, 
-    where y is an integer.
 
-    TODO: '1. maybe implement random walk here
-
-    LATER: 1. Possible SVD for larger transfer matricies??
-'''
 
 def main():
 
@@ -230,12 +219,15 @@ def path_integral(x:float,
                 a = np.einsum('ab,b->a',direct,a)
             a = np.einsum('ab,b->a',defect,a)
             return np.einsum('a,a->',b,a)
+
+
         
-    def skeleton(x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
-                 a:np.ndarray, b:np.ndarray, X:float = 0):
+
+    def skeleton(t:float, X:float, x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
+                a:np.ndarray, b:np.ndarray):
         '''
             Computes a contribution to the path integral of the
-            input skeleton diagram
+            input skeleton diagram, only for cases where y is an integer!
         '''
 
         for i in range(len(x_v)):
@@ -289,40 +281,99 @@ def path_integral(x:float,
 
     return sum
 
-def list_generator(x:int,data:dict,k:int=np.inf,
-                    lists:np.ndarray=[]):
-    '''
-        Generates a complete set of possible lists which can
-        combine to form a complete set 
+    def list_generator(x:int,data:dict,k:int=np.inf,
+                       lists:np.ndarray=[]):
+        '''
+            Generates a complete set of possible lists which can
+            combine to form a complete set 
+        '''
 
-        For now just taking base case of the operator a being 
-        intially being localised to an integer position 
-    '''
+        if x == 0:
+            try:
+                data[len(lists)].append(lists)
+            except:
+                data[len(lists)] = [lists]
+            return
+        elif len(lists) >= k:
+            return 
 
-    if x == 0:
-        try:
-            data[len(lists)].append(lists)
-        except:
-            data[len(lists)] = [lists]
-        return
-    elif len(lists) >= k:
-        return 
+        for i in range(1,x+1):
+            sublist = lists.copy()
+            sublist.append(i)
+            list_generator(x-i,data,k,sublist)
 
-    for i in range(1,x+1):
-        sublist = lists.copy()
-        sublist.append(i)
-        list_generator(x-i,data,k,sublist)
 
-def metropolis_hastings(input:np.ndarray,x:int):
 
-    if input[-1] != x or input[0] != 0:
-        raise Exception('Input array not of correct format')
-    
-    for i in range(1,len(input)-1):
-         if random.randrange(sys.maxsize) % 2 and input[i-1]-input[i+1] == 0:
-            input[i] = 2*input[i+1] - input[i]
+    canvas = np.full(shape=[int(2*T), int(4*T)-2], fill_value=0, dtype="complex_")
+    canvas[0,int(2*T)-1] = 1.0
+    a, b = np.array([0,1,0,0],dtype="complex_"), np.array([0,1,0,0],dtype="complex_")
 
-    return input
-    
+
+    for t in range(1, int(2*T)):
+        for x in range(-t, t):
+
+            vertical_data = {}
+            horizontal_data = {}
+            x_h = math.ceil(t/2 - x/2)
+            #print(x_h)
+            x_v = math.floor(t/2 + 1 + x/2)
+            #print(x_v)
+
+            #k = min(x_h,x_v)
+            #print(k)
+
+            k = min(x_h, x_v)
+
+            #k_v = min(x_h, x_v - 1)
+
+
+            list_generator(x_h,horizontal_data,k=k)
+            list_generator(x_v-1,vertical_data)
+
+            #print(horizontal_data.keys())
+            #print(vertical_data.keys())
+            #print(k_h)
+
+            n = 1
+            sum = 0
+            #print(k_h)
+
+            while n <= 3:
+
+                try:
+                    l1, l2 = horizontal_data[n], vertical_data[n]
+                    for h in l1:
+                        for v in l2:
+                            sum += skeleton(t/2,-x/2,h,v,W,a,b)
+                except:
+                    #print("exeception1")
+                    pass
+                    
+                try:
+                    l1, l2 = horizontal_data[n + 1], vertical_data[n]
+                    for h in l1:
+                        for v in l2:
+                            sum += skeleton(t/2,-x/2,h,v,W,a,b)
+                except:
+                    #print("exeception2")
+                    pass
+                                
+                try:
+                    l1, v = horizontal_data[n], vertical_data[0]
+                    for h in l1:
+                        sum += skeleton(t/2,-x/2,h,[],W,a,b)
+                except:
+                    #print("exeception3")
+                    pass
+
+
+                n += 1
+         
+
+            canvas[t,x+int(2*T)-1] = sum
+
+    return canvas
+
+
 if __name__ == '__main__':
     main()
