@@ -56,6 +56,9 @@ def generate_data(q:int,
             
             # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
             # rx2 = re.compile(rstr2)
+
+            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
+                           delimiter=',',dtype='complex_')
             
             for e in pertubations:
 
@@ -64,9 +67,6 @@ def generate_data(q:int,
                 # if not res2: continue
 
                 # e = res2.group(1)
-
-                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
-                                delimiter=',',dtype='complex_')
                 
                 G = Exponential_Map(e,P)
 
@@ -129,9 +129,9 @@ def generate_conefront(q:int,
     rx = re.compile(rstr)
 
     if k:
-        path = f'data/ConefrontTruncated'
+        path = f'data/LightconeFrontTruncated'
     else:
-        path = 'data/Conefront'
+        path = 'data/LightconeFront'
 
     for _, _, files in os.walk('data/FoldedTensors'):
         for file in files[:1]:
@@ -144,6 +144,9 @@ def generate_conefront(q:int,
             
             # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
             # rx2 = re.compile(rstr2)
+
+            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',                          
+                           delimiter=',',dtype='complex_')
             
             for e in pertubations:
 
@@ -152,9 +155,6 @@ def generate_conefront(q:int,
                 # if not res2: continue
 
                 # e = res2.group(1)
-
-                P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
-                                delimiter=',',dtype='complex_')
                 
                 G = Exponential_Map(e,P)
 
@@ -257,8 +257,8 @@ def path_integral(x:float,
     if k > x_h or k > x_v or not k:
         k = min(x_h,x_v)
 
-    list_generator(x_v-1,vertical_data)
-    list_generator(x_h,horizontal_data,k=k)
+    list_generator(x_v-1,vertical_data,k=k)
+    list_generator(x_h,horizontal_data,k=k+1)
 
     n = 1
     sum = 0
