@@ -8,7 +8,7 @@ def main():
     #used e = 0.0000004 as reminder
     q = 2
     e = 0.0000004
-    d = 5
+    d = 6
     
     W_path = "./Sample_Tensor.csv"
     P_path = "./Sample_Perturbation.csv"
@@ -18,15 +18,10 @@ def main():
     P = expm(1j*e*G)
     PW = np.einsum('ab,bc->ac',P,W).reshape([q**2,q**2,q**2,q**2])
 
-    tiles = get_tiles(PW, d)
-
-    for key, value in tiles.items():
-        path = "./Tile_Zoo/" + key
-        np.savetxt(path, value, delimiter=",")
+    get_tiles(PW, d)
 
 
 
-    
 
 def get_tiles(W:np.ndarray,
               d:int):
@@ -39,7 +34,7 @@ def get_tiles(W:np.ndarray,
         N.B. convention for index labelling is "kx,y where (x,y) is the bond coordinate"
     '''
 
-    tiles = dict()
+    #tiles = dict()
 
 
 
@@ -67,16 +62,18 @@ def get_tiles(W:np.ndarray,
                     reshape = reshape + (f'k{2*(d_h-1)+2},{2*i+1}',)
 
                 val = val.transpose(*reshape,inplace=True)
-                print(val)
+                
 
                 h_direct = val.data
                 h_direct = h_direct.reshape(-1,*h_direct.shape[-d_v:])
                 h_direct = h_direct.reshape(*h_direct.shape[:1],-1)
 
-                tiles[f"h_direct_{d_h}x{d_v}"] = h_direct
+                #tiles[f"h_direct_{d_h}x{d_v}"] = h_direct
+                np.savetxt(f"./Tile_Zoo/h_direct_{d_h}x{d_v}", h_direct, delimiter=",")
 
             else:
-                tiles[f"h_direct_{d_h}x{d_v}"] = W[0,:,:,0]
+                #tiles[f"h_direct_{d_h}x{d_v}"] = W[0,:,:,0]
+                np.savetxt(f"./Tile_Zoo/h_direct_{d_h}x{d_v}", W[0,:,:,0], delimiter=",")
 
 
 
@@ -108,16 +105,18 @@ def get_tiles(W:np.ndarray,
                     reshape = reshape + (f'k{2*i+1},{2*d_v}',)
 
                 val = val.transpose(*reshape,inplace=True)
-                print(val)
+                
 
                 h_defect = val.data
                 h_defect = h_defect.reshape(-1,*h_defect.shape[-d_h:])
                 h_defect = h_defect.reshape(*h_defect.shape[:1],-1)
 
-                tiles[f"h_defect_{d_h}x{d_v}"] = h_defect
+                #tiles[f"h_defect_{d_h}x{d_v}"] = h_defect
+                np.savetxt(f"./Tile_Zoo/h_defect_{d_h}x{d_v}", h_defect, delimiter=",")
 
             else:
-                tiles[f"h_defect_{d_h}x{d_v}"] = W[:,0,:,0]
+                #tiles[f"h_defect_{d_h}x{d_v}"] = W[:,0,:,0]
+                np.savetxt(f"./Tile_Zoo/h_defect_{d_h}x{d_v}", W[:,0,:,0], delimiter=",")
 
 
 
@@ -144,16 +143,18 @@ def get_tiles(W:np.ndarray,
                     reshape = reshape + (f'k{2*i+1},{2*(d_v-1)+2}',)
 
                 val = val.transpose(*reshape,inplace=True)
-                print(val)
+                
 
                 v_direct = val.data
                 v_direct = v_direct.reshape(-1,*v_direct.shape[-d_h:])
                 v_direct = v_direct.reshape(*v_direct.shape[:1],-1)
 
-                tiles[f"v_direct_{d_h}x{d_v}"] = v_direct
+                #tiles[f"v_direct_{d_h}x{d_v}"] = v_direct
+                np.savetxt(f"./Tile_Zoo/v_direct_{d_h}x{d_v}", v_direct, delimiter=",")
 
             else:
-                tiles[f"v_direct_{d_h}x{d_v}"] = W[:,0,0,:]
+                #tiles[f"v_direct_{d_h}x{d_v}"] = W[:,0,0,:]
+                np.savetxt(f"./Tile_Zoo/v_direct_{d_h}x{d_v}", W[:,0,0,:], delimiter=",")
 
 
 
@@ -184,18 +185,20 @@ def get_tiles(W:np.ndarray,
                     reshape = reshape + (f'k{2*d_h},{2*i+1}',)
 
                 val = val.transpose(*reshape,inplace=True)
-                print(val)
+                
 
                 v_defect = val.data
                 v_defect = v_defect.reshape(-1,*v_defect.shape[-d_v:])
                 v_defect = v_defect.reshape(*v_defect.shape[:1],-1)
 
-                tiles[f"v_defect_{d_h}x{d_v}"] = v_defect
+                #tiles[f"v_defect_{d_h}x{d_v}"] = v_defect
+                np.savetxt(f"./Tile_Zoo/v_defect_{d_h}x{d_v}", v_defect, delimiter=",")
 
             else:
-                tiles[f"v_defect_{d_h}x{d_v}"] = W[0,:,0,:]
+                #tiles[f"v_defect_{d_h}x{d_v}"] = W[0,:,0,:]
+                np.savetxt(f"./Tile_Zoo/v_defect_{d_h}x{d_v}", W[0,:,0,:], delimiter=",")
 
-    return tiles
+   
 
 
 if __name__ == '__main__':
