@@ -7,11 +7,11 @@ import numpy as np
 import math
 
 def main():
-    W = np.loadtxt(f'data/FoldedTensors/DU_2_3806443768.csv',delimiter=',',dtype='complex_')
+    W = np.loadtxt(f'data/FoldedTensors/DU_2_33296628.csv',delimiter=',',dtype='complex_')
     P = np.loadtxt(f'data/FoldedPertubations/P_2_866021931.csv',delimiter=',',dtype='complex_')
     e = 1e-7
     q = 2
-    d = 3
+    d = 2
 
     G = Exponential_Map(e,P)
     PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
@@ -21,14 +21,14 @@ def main():
     I, Z = np.zeros(q**2,dtype='complex_'), np.zeros(q**2,dtype='complex_')
     I[0], Z[1] = 1, 1
 
-    a = np.einsum('a,b,c->abc',I,I,Z).reshape(-1)
-    b = np.einsum('a,b,c->abc',Z,I,I).reshape(-1)
+    a = np.einsum('a,b->ab',I,Z).reshape(-1)
+    b = np.einsum('a,b->ab',Z,I).reshape(-1)
 
-    print(f'\n{np.abs(path_integral(0.5,5.5,d,tiles,a,b))}')
+    print(f'\n{(path_integral(0,5.5,d,tiles,a,b))}')
 
-    print(np.abs(PI(0.5,5.5,PW)))
+    print((PI(0,5.5,PW)))
 
-    print(np.abs(exact_contraction(0.5,5.5,q,PW)))
+    print((exact_contraction(0,5.5,q,PW)))
 
 def path_integral(x:float,
                   t:float,
@@ -159,25 +159,30 @@ def get_tiles(W:np.ndarray,
 
     tiles = dict()
 
+    if d == 1:
+        tiles['h_defect'] = W[:,0,:,0]
+        tiles['h_direct'] = W[0,:,:,0]
+        tiles['v_defect'] = W[0,:,0,:]
+        tiles['v_direct'] = W[:,0,0,:]
+
     # HORIZONTAL DIRECT TILE
 
-    tensors = np.array([])
+    tensors, inds1, inds2 = np.array([]), tuple(), tuple()
     
     for i in range(d):
+
         tensors = np.append(tensors,[qtn.Tensor(W[:,:,:,0],inds=(f'k{2*i+1},2',f'k{2*i+2},1',f'k{2*i},1'))])
         tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
                                                             f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}')) for j in range(1,d-1)])
         tensors = np.append(tensors,[qtn.Tensor(W[0,:,:,:],inds=(f'k{2*i+2},{2*(d-1)+1}',f'k{2*i},{2*(d-1)+1}',f'k{2*i+1},{2*(d-1)}'))])
 
+        inds1 = inds1 + (f'k0,{2*i+1}',)
+        inds2 = inds2 + (f'k{2*(d-1)+2},{2*i+1}',)
+
     TN = qtn.TensorNetwork(tensors)
     val = TN.contract()
 
-    reshape = tuple()
-    for i in range(d):
-        reshape = reshape + (f'k0,{2*i+1}',)
-    for i in range(d):
-        reshape = reshape + (f'k{2*(d-1)+2},{2*i+1}',)
-
+    reshape = inds1 + inds2
     val = val.transpose(*reshape,inplace=True)
     print(val)
 
@@ -194,16 +199,12 @@ def get_tiles(W:np.ndarray,
     tensors = np.append(tensors,[qtn.Tensor(W[:,:,:,0],inds=(f'k{2*i+1},2',f'k{2*i+2},1',f'k{2*i},1')) for i in range(d-1)])
     tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,0],inds=(f'k{2*(d-1)+1},2',f'k{2*(d-1)},1'))])
 
-    for j in range(1,d-1):
+    for j in range(1,d):
 
         tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
                                                         f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}')) for i in range(d-1)])
         
         tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},{2*j+2}',f'k{2*(d-1)},{2*j+1}',f'k{2*(d-1)+1},{2*j}'))])
-
-    tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*(d-1)+2}',f'k{2*i+2},{2*(d-1)+1}',
-                                                        f'k{2*i},{2*(d-1)+1}',f'k{2*i+1},{2*(d-1)}')) for i in range(d-1)])  
-    tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},{2*(d-1)+2}',f'k{2*(d-1)},{2*(d-1)+1}',f'k{2*(d-1)+1},{2*(d-1)}'))])
 
     TN = qtn.TensorNetwork(tensors)
     val = TN.contract()
@@ -225,22 +226,21 @@ def get_tiles(W:np.ndarray,
 
     ### VERTICAL DIRECT TILE
 
-    tensors = np.array([])
+    tensors, inds1, inds2 = np.array([]), tuple(), tuple()
         
     for j in range(d):
+
         tensors = np.append(tensors,[qtn.Tensor(W[:,:,0,:],inds=(f'k1,{2*j+2}',f'k2,{2*j+1}',f'k1,{2*j}'))])
         tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}')) for i in range(1,d-1)])
         tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},{2*j+2}',f'k{2*(d-1)},{2*j+1}',f'k{2*(d-1)+1},{2*j}'))])
 
+        inds1 = inds1 + (f'k{2*j+1},0',)
+        inds2 = inds2 + (f'k{2*j+1},{2*(d-1)+2}',)
+
     TN = qtn.TensorNetwork(tensors)
     val = TN.contract()
 
-    reshape = tuple()
-    for i in range(d):
-        reshape = reshape + (f'k{2*i+1},0',)
-    for i in range(d):
-        reshape = reshape + (f'k{2*i+1},{2*(d-1)+2}',)
-
+    reshape = inds1 + inds2
     val = val.transpose(*reshape,inplace=True)
     print(val)
 
@@ -254,11 +254,7 @@ def get_tiles(W:np.ndarray,
 
     tensors = np.array([])
 
-    tensors = np.append(tensors,[qtn.Tensor(W[:,:,0,:],inds=('k1,2','k2,1','k1,0'))])
-    tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},2',f'k{2*i+2},1',
-                                                    f'k{2*i},1',f'k{2*i+1},0')) for i in range(1,d)])
-
-    for j in range(1,d-1):
+    for j in range(d-1):
         tensors = np.append(tensors,[qtn.Tensor(W[:,:,0,:],inds=(f'k1,{2*j+2}',f'k2,{2*j+1}',f'k1,{2*j}'))])
         tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
                                                         f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}')) for i in range(1,d)])
