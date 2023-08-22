@@ -115,13 +115,25 @@ def get_tiles(W:np.ndarray,
     
     tensors = np.append(tensors,[qtn.Tensor(W[:,:,:,0],inds=('k1,2','k2,1','k0,1'))])
     tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k1,{2*j+2}',f'k2,{2*j+1}',
-                                                        f'k1,{2*j+1}',f'k1,{2*j}')) for j in range(1,d-1)])
-    tensors = np.append(tensors,[qtn.Tensor(W[0,:,:,:],inds=(f'k2,{2*(d-1)+1}',f'k1,{2*(d-1)+1}',f'k1,{2*(d-1)}'))])
+                                                        f'k0,{2*j+1}',f'k1,{2*j}')) for j in range(1,d-1)])
+    tensors = np.append(tensors,[qtn.Tensor(W[0,:,:,:],inds=(f'k2,{2*(d-1)+1}',f'k0,{2*(d-1)+1}',f'k1,{2*(d-1)}'))])
 
     TN = qtn.TensorNetwork(tensors)
-    TN.draw()
+    # TN.draw()
 
     val = TN.contract()
+
+    reshape = tuple()
+
+    for i in range(d):
+        reshape = reshape + (f'k0,{2*i+1}',)
+    for i in range(d):
+        reshape = reshape + (f'k2,{2*i+1}',)
+
+    val = val.transpose(*reshape,inplace=True)
+
+    print(val)
+
     h_direct = val.data
 
     tensors = np.array([])
@@ -141,10 +153,22 @@ def get_tiles(W:np.ndarray,
         
     tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},{2*(d-1)+2}',f'k{2*(d-1)},{2*(d-1)+1}',f'k{2*(d-1)+1},{2*(d-1)}'))])
 
+    
+
     TN = qtn.TensorNetwork(tensors)
-    TN.draw()
+    # TN.draw()
 
     val = TN.contract()
+
+    reshape = tuple()
+
+    for i in range(d):
+        reshape = reshape + (f'k0,{2*i+1}',)
+    for i in range(d):
+        reshape = reshape + (f'k{2*i+1},{2*d}',)
+
+    print(val)
+
     h_defect = val.data
 
     ### VERTICAL ###
@@ -156,9 +180,20 @@ def get_tiles(W:np.ndarray,
     tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},2',f'k{2*(d-1)},1',f'k{2*(d-1)+1},0'))])
 
     TN = qtn.TensorNetwork(tensors)
-    TN.draw()
 
     val = TN.contract()
+
+    reshape = tuple()
+
+    for i in range(d):
+        reshape = reshape + (f'k{2*i+1},0',)
+    for i in range(d):
+        reshape = reshape + (f'k{2*i+1},2',)
+
+    val = val.transpose(*reshape,inplace=True)
+
+    print(val)
+
     v_direct = val.data
 
     tensors = np.array([])
@@ -176,15 +211,23 @@ def get_tiles(W:np.ndarray,
     tensors = np.append(tensors,[qtn.Tensor(W[0,:,:,:],inds=(f'k{2*i+2},{2*(d-1)+1}',f'k{2*i},{2*(d-1)+1}',f'k{2*i+1},{2*(d-1)}')) for i in range(1,d)])
 
     TN = qtn.TensorNetwork(tensors)
-    TN.draw()
 
     val = TN.contract()
+
+    reshape = tuple()
+
+    for i in range(d):
+        reshape = reshape + (f'k{2*i+1},0',)
+    for i in range(d):
+        reshape = reshape + (f'k{2*d},{2*i+1}',)
+
+    val = val.transpose(*reshape,inplace=True)
+
+    print(val)
+
     v_defect = val.data
 
     return h_direct, h_defect, v_direct, v_defect
-
-
-
 
 W = np.loadtxt(f'Sample_Tensor.csv',delimiter=',',dtype='complex_')
 P = np.loadtxt(f'Sample_Perturbation.csv',delimiter=',',dtype='complex_')
@@ -195,7 +238,5 @@ G = Exponential_Map(e,P)
 PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
 
 
-h_dir,h_def,v_dir,v_def = get_tiles(PW,2)
-
-print(h_dir,h_def,v_dir,v_def)
+h_dir,h_def,v_dir,v_def = get_tiles(PW,3)
 
