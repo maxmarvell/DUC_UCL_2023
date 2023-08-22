@@ -6,6 +6,30 @@ import quimb.tensor as qtn
 import numpy as np 
 import math
 
+def main():
+    W = np.loadtxt(f'data/FoldedTensors/DU_2_3806443768.csv',delimiter=',',dtype='complex_')
+    P = np.loadtxt(f'data/FoldedPertubations/P_2_866021931.csv',delimiter=',',dtype='complex_')
+    e = 1e-7
+    q = 2
+    d = 3
+
+    G = Exponential_Map(e,P)
+    PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
+
+    tiles = get_tiles(PW,d)
+
+    I, Z = np.zeros(q**2,dtype='complex_'), np.zeros(q**2,dtype='complex_')
+    I[0], Z[1] = 1, 1
+
+    a = np.einsum('a,b,c->abc',I,I,Z).reshape(-1)
+    b = np.einsum('a,b,c->abc',Z,I,I).reshape(-1)
+
+    print(f'\n{np.abs(path_integral(0.5,5.5,d,tiles,a,b))}')
+
+    print(np.abs(PI(0.5,5.5,PW)))
+
+    print(np.abs(exact_contraction(0.5,5.5,q,PW)))
+
 def path_integral(x:float,
                   t:float,
                   d:int,
@@ -41,9 +65,10 @@ def path_integral(x:float,
 
         elif terminate and (int(2*(t+x))%2 == 0):
             print('    TERMINATING WITH DIRECT')
+            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
             for _ in range(l):
                 a = np.einsum('ab,b->a',direct,a)
-            return np.einsum('a,a->',b,a)
+            return np.einsum('a,a->',a,b)
 
         else:
             print('      TERMINATING WITH DEFECT')
@@ -51,7 +76,7 @@ def path_integral(x:float,
             for _ in range(l-1):
                 a = np.einsum('ab,b->a',direct,a)
             a = np.einsum('ab,b->a',defect,a)
-            return np.einsum('a,a->',b,a)
+            return np.einsum('a,a->',a,b)
         
     def skeleton(h:np.ndarray,
                  v:np.ndarray,
@@ -81,15 +106,6 @@ def path_integral(x:float,
     x_h /= d
     x_v /= d
 
-    # k = min(x_h//d,x_v//d)
-
-    # x_h = x_h - k*(d-1)
-
-    # if int(2*(t+x))%2 == 0:
-    #     x_v = x_v - (k)*(d-1) - d
-    # else:
-    #     x_v = x_v - (k)*(d-1) - 1
-
     k = min(x_h,x_v)
 
     list_generator(int(x_v-1),vertical_data,k=k)
@@ -108,6 +124,7 @@ def path_integral(x:float,
                 for v in l2:
                     print(f'\n   Diagram h:{h} and v:{v}')
                     sum += skeleton(h,v,a)
+                    print(f'             Running sum {sum}')
         except:pass
             
         try:
@@ -116,6 +133,7 @@ def path_integral(x:float,
                 for v in l2:
                     print(f'\n   Diagram h:{h} and v:{v}')
                     sum += skeleton(h,v,a)
+                    print(f'             Running sum {sum}')
         except:pass
                         
         try:
@@ -123,6 +141,7 @@ def path_integral(x:float,
             for h in l1:
                 print(f'\n   Diagram h:{h} and v:{v}')
                 sum += skeleton(h,[])
+                print(f'             Running sum {sum}')
         except:pass
 
         n += 1
@@ -134,7 +153,7 @@ def get_tiles(W:np.ndarray,
 
     '''
         gets the four types of tiles corresponding to horizontal defect,
-        horizontal direct, vertical defect, vertical driect for a d dimensional
+        horizontal direct, vertical defect, vertical direct for a d dimensional
         case
     '''
 
@@ -144,30 +163,27 @@ def get_tiles(W:np.ndarray,
 
     tensors = np.array([])
     
-    tensors = np.append(tensors,[qtn.Tensor(W[:,:,:,0],inds=('k1,2','k2,1','k0,1'))])
-    tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k1,{2*j+2}',f'k2,{2*j+1}',
-                                                        f'k0,{2*j+1}',f'k1,{2*j}')) for j in range(1,d-1)])
-    tensors = np.append(tensors,[qtn.Tensor(W[0,:,:,:],inds=(f'k2,{2*(d-1)+1}',f'k0,{2*(d-1)+1}',f'k1,{2*(d-1)}'))])
+    for i in range(d):
+        tensors = np.append(tensors,[qtn.Tensor(W[:,:,:,0],inds=(f'k{2*i+1},2',f'k{2*i+2},1',f'k{2*i},1'))])
+        tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
+                                                            f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}')) for j in range(1,d-1)])
+        tensors = np.append(tensors,[qtn.Tensor(W[0,:,:,:],inds=(f'k{2*i+2},{2*(d-1)+1}',f'k{2*i},{2*(d-1)+1}',f'k{2*i+1},{2*(d-1)}'))])
 
     TN = qtn.TensorNetwork(tensors)
     val = TN.contract()
 
     reshape = tuple()
-
     for i in range(d):
         reshape = reshape + (f'k0,{2*i+1}',)
     for i in range(d):
-        reshape = reshape + (f'k2,{2*i+1}',)
+        reshape = reshape + (f'k{2*(d-1)+2},{2*i+1}',)
 
     val = val.transpose(*reshape,inplace=True)
-
     print(val)
 
     h_direct = val.data
     h_direct = h_direct.reshape(-1,*h_direct.shape[-d:])
     h_direct = h_direct.reshape(*h_direct.shape[:1],-1)
-
-    h_direct = h_direct**d
 
     tiles['h_direct'] = h_direct
 
@@ -198,7 +214,9 @@ def get_tiles(W:np.ndarray,
     for i in range(d):
         reshape = reshape + (f'k{2*i+1},{2*d}',)
 
-    h_defect = val.data
+    val = val.transpose(*reshape,inplace=True)
+    print(val)
+
     h_defect = val.data
     h_defect = h_defect.reshape(-1,*h_defect.shape[-d:])
     h_defect = h_defect.reshape(*h_defect.shape[:1],-1)
@@ -208,28 +226,27 @@ def get_tiles(W:np.ndarray,
     ### VERTICAL DIRECT TILE
 
     tensors = np.array([])
-    
-    tensors = np.append(tensors,[qtn.Tensor(W[:,:,0,:],inds=('k1,2','k2,1','k1,0'))])
-    tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},2',f'k{2*i+2},1',f'k{2*i},1',f'k{2*i+1},0')) for i in range(1,d-1)])
-    tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},2',f'k{2*(d-1)},1',f'k{2*(d-1)+1},0'))])
+        
+    for j in range(d):
+        tensors = np.append(tensors,[qtn.Tensor(W[:,:,0,:],inds=(f'k1,{2*j+2}',f'k2,{2*j+1}',f'k1,{2*j}'))])
+        tensors = np.append(tensors,[qtn.Tensor(W,inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}')) for i in range(1,d-1)])
+        tensors = np.append(tensors,[qtn.Tensor(W[:,0,:,:],inds=(f'k{2*(d-1)+1},{2*j+2}',f'k{2*(d-1)},{2*j+1}',f'k{2*(d-1)+1},{2*j}'))])
 
     TN = qtn.TensorNetwork(tensors)
-
     val = TN.contract()
 
     reshape = tuple()
     for i in range(d):
         reshape = reshape + (f'k{2*i+1},0',)
     for i in range(d):
-        reshape = reshape + (f'k{2*i+1},2',)
+        reshape = reshape + (f'k{2*i+1},{2*(d-1)+2}',)
 
     val = val.transpose(*reshape,inplace=True)
+    print(val)
 
     v_direct = val.data
     v_direct = v_direct.reshape(-1,*v_direct.shape[-d:])
     v_direct = v_direct.reshape(*v_direct.shape[:1],-1)
-
-    v_direct = v_direct**d
 
     tiles['v_direct'] = v_direct
 
@@ -260,6 +277,7 @@ def get_tiles(W:np.ndarray,
         reshape = reshape + (f'k{2*d},{2*i+1}',)
 
     val = val.transpose(*reshape,inplace=True)
+    print(val)
 
     v_defect = val.data
     v_defect = v_defect.reshape(-1,*v_defect.shape[-d:])
@@ -269,26 +287,5 @@ def get_tiles(W:np.ndarray,
 
     return tiles
 
-W = np.loadtxt(f'data/FoldedTensors/DU_2_3806443768.csv',delimiter=',',dtype='complex_')
-P = np.loadtxt(f'data/FoldedPertubations/P_2_866021931.csv',delimiter=',',dtype='complex_')
-e = 1e-7
-q = 2
-d = 3
-
-G = Exponential_Map(e,P)
-PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
-
-tiles = get_tiles(PW,d)
-
-I, Z = np.zeros(q**2,dtype='complex_'), np.zeros(q**2,dtype='complex_')
-I[0], Z[1] = 1, 1
-
-a = np.einsum('a,b,c->abc',I,I,Z).reshape(-1)
-b = np.einsum('a,b,c->abc',Z,I,I).reshape(-1)
-
-print('\n',np.abs(path_integral(0.5,8.5,d,tiles,a,b)))
-
-print(np.abs(PI(0.5,8.5,PW)))
-
-print(np.abs(exact_contraction(0.5,8.5,q,PW)))
-
+if __name__ == '__main__':
+    main()
