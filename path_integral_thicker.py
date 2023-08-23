@@ -3,6 +3,7 @@ from path_integral import path_integral as PI
 from QUIMB_exact import exact_contraction
 from P_generator import Exponential_Map
 from time import time
+from RSVD import rsvd
 import quimb.tensor as qtn
 import numpy as np 
 import math
@@ -215,6 +216,19 @@ def path_integral(x:float,
         n += 1
 
     return sum
+
+def tile_SVD(d:int,
+             K:int):
+
+    tiles = dict()
+    path = 'data/TileZoo'
+    types = ['h_direct','h_defect','v_direct','v_defect']
+
+    for i in types:
+        tile = np.loadtxt(f'{path}/{i}_{d}x{d}',delimiter=',',dtype='complex_')
+        tiles[i] = rsvd(tile,K,q=4)
+
+    return tiles
 
 def get_tiles(W:np.ndarray,
               d:int):
