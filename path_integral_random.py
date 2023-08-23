@@ -9,12 +9,13 @@ import re
 def main():
 
     q = 2
-    e = [1e-07]
-    tspan = 10
-    temp = 0.7
+    e = [5e-07]
+    tspan = 12
+    temp = [0.001,0.01,0.1]
 
     for i in e:
-        generate_data(q,tspan,i,temp)
+        for t in temp:
+            generate_data(q,tspan,i,t)
 
 def generate_data(q:int,
                   tspan:int,
@@ -26,9 +27,9 @@ def generate_data(q:int,
     circuit = random_circuit(tspan,gates,temp)
 
     if k:
-        path = f'data/RandomPathIntegralTruncated{temp}'
+        path = f'data/RandomPathIntegralTruncated'
     else:
-        path = f'data/RandomPathIntegral{temp}'
+        path = f'data/RandomPathIntegral'
 
     df = pd.DataFrame()
     err = pd.Series()

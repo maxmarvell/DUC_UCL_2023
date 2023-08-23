@@ -183,11 +183,10 @@ def path_integral(x:float,
                   W:np.ndarray,
                   k:int = 0):
 
-    def transfer_matrix(W:np.ndarray, a:np.ndarray,
-                        x:int, b:np.ndarray = [],
+    def transfer_matrix(a:np.ndarray,
+                        l:int,
                         horizontal:bool = True,
-                        terminate:bool = False,
-                        X:float = 0):
+                        terminate:bool = False):
 
         '''
             A transfer matrix can either be horizontal or vertical row of contracted
@@ -206,33 +205,34 @@ def path_integral(x:float,
             defect = W[0,:,0,:]
 
         if not terminate:
-            for _ in range(x-1):
+            for _ in range(l-1):
                 a = np.einsum('ab,b->a',direct,a)
             return np.einsum('ab,b->a',defect,a)
 
-        elif terminate and (int(2*(t+X))%2 == 0):
-            for _ in range(x):
+        elif terminate and (int(2*(t+x))%2 == 0):
+            for _ in range(l):
                 a = np.einsum('ab,b->a',direct,a)
             return np.einsum('a,a->',b,a)
 
         else:
-            for _ in range(x-1):
+            for _ in range(l-1):
                 a = np.einsum('ab,b->a',direct,a)
             a = np.einsum('ab,b->a',defect,a)
             return np.einsum('a,a->',b,a)
 
-    def skeleton(t:float, X:float, x_h:np.ndarray, x_v:np.ndarray, W:np.ndarray,
-                a:np.ndarray, b:np.ndarray):
+    def skeleton(h:np.ndarray,
+                 v:np.ndarray,
+                 a:np.ndarray):
         '''
             Computes a contribution to the path integral of the
             input skeleton diagram, only for cases where y is an integer!
         '''
 
-        for i in range(len(x_v)):
-            a = transfer_matrix(W,a,x_h[i])
-            a = transfer_matrix(W,a,x_v[i],horizontal=False)
+        for i in range(len(v)):
+            a = transfer_matrix(a,h[i])
+            a = transfer_matrix(a,v[i],horizontal=False)
 
-        return transfer_matrix(W,a,x_h[-1],b=b,terminate=True,X=X) if len(x_h) > len(x_v) else np.einsum('a,a->',a,b)
+        return transfer_matrix(a,h[-1],terminate=True) if len(h) > len(v) else np.einsum('a,a->',a,b)
 
     a, b = np.array([0,1,0,0],dtype='complex_'), np.array([0,1,0,0],dtype='complex_')
 
@@ -259,20 +259,20 @@ def path_integral(x:float,
             l1, l2 = horizontal_data[n], vertical_data[n]
             for h in l1:
                 for v in l2:
-                    sum += skeleton(h,v,W,a,b,X=x)
+                    sum += skeleton(h,v,a)
         except:pass
             
         try:
             l1, l2 = horizontal_data[n+1], vertical_data[n]
             for h in l1:
                 for v in l2:
-                    sum += skeleton(h,v,W,a,b,X=x)
+                    sum += skeleton(h,v,a)
         except:pass
                         
         try:
             l1, v = horizontal_data[n], vertical_data[0]
             for h in l1:
-                sum += skeleton(h,[],W,a,b,X=x)
+                sum += skeleton(h,[],a)
         except:pass
 
         n += 1

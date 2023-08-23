@@ -15,10 +15,12 @@ import os
 def main():
 
     q = 2
+    timespan = 9
+    pertubations = np.arange(0.0000001, 0.0000007, 0.00000001)
 
     start = time()
 
-    generate_data(q,9)
+    generate_data(q,timespan,pertubations)
 
     end = time()
 
@@ -37,8 +39,11 @@ def generate_data(q:int,
             res = rx.match(file)
             seed = res.group(1)
     
-            W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed}.csv',
-                            delimiter=',',dtype='complex_')
+            # W = np.loadtxt(f'./data/FoldedTensors/DU_{q}_{seed}.csv',
+            #                 delimiter=',',dtype='complex_')
+
+            W = np.loadtxt(f'Sample_Tensor.csv',
+                           delimiter=',',dtype='complex_')
             
             # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
             # rx2 = re.compile(rstr2)
@@ -52,7 +57,10 @@ def generate_data(q:int,
                     # if not res2:
                     #     continue
 
-            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
+            # P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
+            #                delimiter=',',dtype='complex_')
+
+            P = np.loadtxt('Sample_Perturbation.csv',
                            delimiter=',',dtype='complex_')
 
             for e in pertubations:
@@ -65,7 +73,7 @@ def generate_data(q:int,
 
                 start = time()
 
-                for T in range(2*tspan,2*tspan+1):
+                for T in range(2*tspan+1):
 
                     t = float(T)/2
 
@@ -91,16 +99,23 @@ def generate_data(q:int,
                 print('Time taken to compute light cone: ', end-start)
 
                 try:
-                    df.to_csv(f'diffusive_data/data_e{e}_T12.csv', index=False)
+                    df.to_csv('diffusive_data/data_e{e}_T12.csv', index=False)
                 except:
                     os.mkdir('diffusive_data')
-                    df.to_csv(f'diffusive_data/data_e{e}_T12.csv', index=False)
+                    df.to_csv('diffusive_data/data_e{e}_T12.csv', index=False)
 
-                try:
-                    err.to_csv(f'diffusive_data/charge_conservation/test{e}.csv', index=False)
-                except:
-                    os.mkdir('diffusive_data/charge_conservation')
-                    err.to_csv(f'diffusive_data/charge_conservation/test{e}.csv', index=False)
+
+                # try:
+                #     df.to_csv(f'data/TensorExact/{q}_{seed}_{e}.csv', index=False)
+                # except:
+                #     os.mkdir('data/TensorExact')
+                #     df.to_csv(f'data/TensorExact/{q}_{seed}_{e}.csv', index=False)
+
+                # try:
+                #     err.to_csv(f'data/TensorExact/charge_conservation/CQ_{q}_{seed}_{e}.csv', index=False)
+                # except:
+                #     os.mkdir('data/TensorExact/charge_conservation')
+                #     err.to_csv(f'data/TensorExact/charge_conservation/CQ_{q}_{seed}_{e}.csv', index=False)
 
 def exact_contraction(x:float,
                       t:float,
@@ -146,8 +161,8 @@ def DU_network_construction(x:float,
         DU = [[qtn.Tensor(
 
             W.reshape([q**2,q**2,q**2,q**2]),
-            inds=(f'k{2*i+1},{2*j}',f'k{2*i},{2*j+1}',
-                  f'k{2*i+2},{2*j+1}',f'k{2*i+1},{2*j+2}'),
+            inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
+                  f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}'),
             tags=[f'UNITARY_{i},{j}'])
 
             for i in range(x_h)] for j in range(x_v)]

@@ -1,4 +1,5 @@
 from path_integral_random import get_gates, distribute
+from time import time
 import quimb.tensor as qtn
 import numpy as np
 import pandas as pd
@@ -6,23 +7,29 @@ import math
 import os
 
 def main():
-    pertubations = [3e-7]
-    temperature = [0.5,0.9,1.1,1.5]
+    pertubations = [5e-7]
+    temperature = [0.001,0.01,0.1]
     generate_data(2,pertubations,9,temperature)
 
 def generate_data(q:int,
                   pertubations:np.ndarray,
                   tspan:int,
                   temperatures:np.ndarray):
-        
+    
+    path = 'data/RandomTensorExact'
+
     for e in pertubations:
             
         for temp in temperatures:
+
+            print(f'\n   Using QUIMB to find exact correlation of peturbed dual unitary where e is {e} and temperature is {temp} up to {tspan}s\n')
     
             PW, gates = get_gates(q,e)
 
             df = pd.DataFrame()
             err = pd.Series()
+
+            start = time()
 
             for T in range(2*tspan+1):
 
@@ -41,11 +48,12 @@ def generate_data(q:int,
 
                 df = pd.concat([df, s.to_frame().T])
 
+            end = time()
+
             df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
             df = df.fillna(0)
             print(df,'\n')
-
-            path = 'data/RandomTensorExact'
+            print(f'(time taken was {end-start})')
 
             try:
                 df.to_csv(path+f'/{q}_{e}_{temp}.csv')

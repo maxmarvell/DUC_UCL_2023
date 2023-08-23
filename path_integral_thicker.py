@@ -2,6 +2,7 @@ from path_integral import list_generator
 from path_integral import path_integral as PI
 from QUIMB_exact import exact_contraction
 from P_generator import Exponential_Map
+from time import time
 import quimb.tensor as qtn
 import numpy as np 
 import math
@@ -11,7 +12,7 @@ def main():
     P = np.loadtxt(f'data/FoldedPertubations/P_2_866021931.csv',delimiter=',',dtype='complex_')
     e = 1e-7
     q = 2
-    d = 2
+    d = 3
 
     G = Exponential_Map(e,P)
     PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
@@ -21,22 +22,31 @@ def main():
     I, Z = np.zeros(q**2,dtype='complex_'), np.zeros(q**2,dtype='complex_')
     I[0], Z[1] = 1, 1
 
-    a = np.einsum('a,b->ab',I,Z).reshape(-1)
-    b = np.einsum('a,b->ab',Z,I).reshape(-1)
+    a = np.einsum('a,b,c->abc',I,I,Z).reshape(-1)
+    b = np.einsum('a,b,c->abc',Z,I,I).reshape(-1)
 
-    print(f'\n{(path_integral(0,5.5,d,tiles,a,b))}')
+    start = time()
+    val = path_integral(0.5,8.5,d,tiles,a,b,K=10)
+    end = time()
+    print(f'\nTruncated case: {val} computed in {end-start}s')
 
-    print((PI(0,5.5,PW)))
+    # start = time()
+    # val = path_integral(0.5,8.5,d,tiles,a,b)
+    # end = time()
 
-    print((exact_contraction(0,5.5,q,PW)))
+    # print(f'\nComplete case: {val} computed in {end-start}s')
+
+    # print((PI(0,5.5,PW)))
+
+    # print((exact_contraction(0,5.5,q,PW)))
 
 def path_integral(x:float,
                   t:float,
                   d:int,
                   tiles:dict,
                   a:np.ndarray,
-                  b:np.ndarray):
-    
+                  b:np.ndarray,
+                  K:int = None):
     
     def transfer_matrix(a:np.ndarray,
                         l:int,
@@ -78,6 +88,59 @@ def path_integral(x:float,
             a = np.einsum('ab,b->a',defect,a)
             return np.einsum('a,a->',a,b)
         
+    def truncated_transfer_matrix(a:np.ndarray,
+                                  l:int,
+                                  horizontal:bool = True,
+                                  terminate:bool = False):
+        
+        '''
+            A transfer matrix can either be horizontal or vertical row of contracted
+            folded tensors. 
+            For the case of a horizontal transfer matrix the row can only be terminated
+            either by a defect or by the operator b
+        '''
+
+        def contract(a,u,s,v):
+            a = np.einsum('ab,b->a',v,a)
+            a = np.multiply(s,a)
+            return np.einsum('ab,b->a',u,a)
+
+        if horizontal:
+            direct = tiles['h_direct']
+            defect = tiles['h_defect']
+        else:
+            direct = tiles['v_direct']
+            defect = tiles['v_defect']
+
+        if K:
+            u1, s1, v1 = np.linalg.svd(direct)
+            u1, s1, v1 = u1[:,:K], s1[:K], v1[:K,:]
+
+            u2, s2, v2 = np.linalg.svd(defect)
+            u2, s2, v2 = u2[:,:K], s2[:K], v2[:K,:]
+
+
+        if not terminate:
+            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
+            for _ in range(l-1):
+                a = contract(a,u1,s1,v1)
+            return contract(a,u2,s2,v2)
+
+        elif terminate and (int(2*(t+x))%2 == 0):
+            print('    TERMINATING WITH DIRECT')
+            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
+            for _ in range(l):
+                a = contract(a,u1,s1,v1)
+            return np.einsum('a,a->',a,b)
+
+        else:
+            print('      TERMINATING WITH DEFECT')
+            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
+            for _ in range(l-1):
+                a = contract(a,u1,s1,v1)
+            a = contract(a,u2,s2,v2)
+            return np.einsum('a,a->',a,b)
+        
     def skeleton(h:np.ndarray,
                  v:np.ndarray,
                  a:np.ndarray):
@@ -86,17 +149,22 @@ def path_integral(x:float,
             input skeleton diagram
         '''
 
+        if not K:
+            fun = transfer_matrix
+        else:
+            fun = truncated_transfer_matrix
+
         for i in range(len(v)):
 
-            a = transfer_matrix(a,h[i])
+            a = fun(a,h[i])
 
             print(f'    Computed horizontal transfer matrix of length {h[i]}')
 
-            a = transfer_matrix(a,v[i],horizontal=False)
+            a = fun(a,v[i],horizontal=False)
 
             print(f'    Computed vertical transfer matrix of length {v[i]}')
 
-        return transfer_matrix(a,h[-1],terminate=True) if len(h) > len(v) else np.einsum('a,a->',a,b)
+        return fun(a,h[-1],terminate=True) if len(h) > len(v) else np.einsum('a,a->',a,b)
     
     vertical_data = {}
     horizontal_data = {}

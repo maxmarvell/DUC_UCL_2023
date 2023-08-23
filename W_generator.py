@@ -21,7 +21,6 @@ def generate_data(q:int):
     np.random.seed(seed)
 
     start = time()
-    print('\n')
 
     W = initialize_W(q)
     indices = np.argwhere(np.isnan(W))
@@ -30,7 +29,7 @@ def generate_data(q:int):
 
     end = time()
 
-    print(f'Time taken to generate W:{end-start}\n')
+    print(f'\nTime taken to generate W:{end-start}')
 
     I, Z = np.zeros(q**2), np.zeros(q**2)
     I[0], Z[1] = 1, 1
@@ -137,5 +136,5 @@ def find_W_constrained(q):
     return real_to_complex(result.x)
 
 if __name__ == '__main__':
-    for _ in range(5):
+    for _ in range(10):
         main()
