@@ -6,21 +6,55 @@ import re
 import os
 import math
 
-
-
 def main():
 
-    q, k, tspan, depth = 2, 3, 10, 6
+    # q, k, tspan, depth = 2, 3, 10, 6
 
-    pertubations = [3e-07,5e-07]
+    # pertubations = [3e-07,5e-07]
 
-    start = time()
+    # start = time()
 
-    generate_data(q,tspan,pertubations,k=k)
+    # generate_data(q,tspan,pertubations,k=k)
     
-    end = time()
+    # end = time()
 
-    print('Total time taken to run:', end-start, '\n')
+    # print('Total time taken to run:', end-start, '\n')
+
+    e = 1e-7
+    q = 2
+    W_path = 'data/FoldedTensors/DU_2_33296628.csv'
+    P_path = 'data/FoldedPertubations/P_2_866021931.csv'
+    W = np.loadtxt(W_path,delimiter=',',dtype='complex_')
+    G = np.loadtxt(P_path,delimiter=',',dtype='complex_')
+    P = Exponential_Map(e,G)
+    PW = np.einsum('ab,bc->ac',P,W).reshape([q**2,q**2,q**2,q**2])
+    tspan = 8
+
+    df = pd.DataFrame()
+    err = pd.Series()
+
+    for T in range(2*tspan+1):
+        t = float(T)/2
+
+        data = np.array([])
+        inds = np.array([])
+
+        for x in range(-T+1,T+1):
+            x = float(x)/2
+            inds = np.append(inds,x)
+            data = np.append(data,[path_integral(x,t,PW)])
+
+        print(f'computed for T = {t}s')
+
+        s = pd.Series(data,inds,name=t)        
+        df = pd.concat([df, s.to_frame().T])
+        err[t] = np.abs(sum(data))
+
+    df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
+    df = df.fillna(0)
+
+    print(df)
+    print(err)
 
 def generate_data(q:int,
                   tspan:int,
@@ -209,7 +243,7 @@ def path_integral(x:float,
                 a = np.einsum('ab,b->a',direct,a)
             return np.einsum('ab,b->a',defect,a)
 
-        elif terminate and (int(2*(t+x))%2 == 0):
+        elif ((int(2*(t+x))%2 == 0) and horizontal) or ((int(2*(t+x))%2 != 0) and not horizontal):
             for _ in range(l):
                 a = np.einsum('ab,b->a',direct,a)
             return np.einsum('a,a->',b,a)
@@ -228,11 +262,21 @@ def path_integral(x:float,
             input skeleton diagram, only for cases where y is an integer!
         '''
 
-        for i in range(len(v)):
-            a = transfer_matrix(a,h[i])
-            a = transfer_matrix(a,v[i],horizontal=False)
+        if v == []:
+            return transfer_matrix(a,h[-1],terminate=True)
+        
+        elif len(v) == len(h):
+            for i in range(len(v)-1):
+                a = transfer_matrix(a,h[i])
+                a = transfer_matrix(a,v[i],horizontal=False)
+            a = transfer_matrix(a,h[-1])
 
-        return transfer_matrix(a,h[-1],terminate=True) if len(h) > len(v) else np.einsum('a,a->',a,b)
+        else:
+            for i in range(len(v)):
+                a = transfer_matrix(a,h[i])
+                a = transfer_matrix(a,v[i],horizontal=False)
+
+        return transfer_matrix(a,h[-1],terminate=True) if len(h) > len(v) else transfer_matrix(a,v[-1],terminate=True,horizontal=False)
 
     a, b = np.array([0,1,0,0],dtype='complex_'), np.array([0,1,0,0],dtype='complex_')
 
@@ -244,7 +288,7 @@ def path_integral(x:float,
 
     x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
 
-    if k > x_h or k > x_v or not k:
+    if not k:
         k = min(x_h,x_v)
 
     list_generator(x_v-1,vertical_data,k=k)
