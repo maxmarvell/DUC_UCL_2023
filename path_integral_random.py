@@ -10,7 +10,7 @@ def main():
 
     q = 2
     e = [5e-07]
-    tspan = 12
+    tspan = 10
     temp = [0.001,0.01,0.1]
 
     for i in e:
@@ -72,6 +72,32 @@ def path_integral(x:float,
                   circuit:pd.DataFrame,
                   PW:dict,
                   k:int = 0):
+    
+    '''
+        Computes path integral corresponding to input circuit arrangement.
+        Neglects contribution from dressed/thicker paths and looping paths
+        as in Ref:________
+
+        args:
+            x: half-int float (.5)
+                The relative position of the second operator
+            t: half-int float (.5)
+                The time take to evolve the local operator
+            circuit: pd.DataFrame
+                A DataFrame encoding the gate locations, where each gate is stored
+                under a seed name
+            PW: dict
+                Dictionary mapping seeds to discrete set of peturbed DU gates
+        
+        kwargs:
+            k: int
+                Maximum number of partitions considered when using list generator
+                see 'path_integral.py' for details
+
+        returns:
+            sum: complex
+                Path integral approximation to two-point correlation fucntion
+    '''
 
     def transfer_matrix(a:np.ndarray,
                         l:int,
@@ -81,12 +107,33 @@ def path_integral(x:float,
                         terminate:bool = False):
 
         '''
-            A transfer matrix can either be horizontal or vertical row of contracted
-            folded tensors. 
-            For the case of a horizontal transfer matrix the row can only be terminated
-            either by a defect or by the operator b
+            Program that multiplies initial operator by succesive gates (transfer
+            matrix)
 
-            a can be like [0,1,0,0]
+            args:
+                a: np.ndarray
+                    Input local operator to transfer matrix
+                l: int
+                    Length of the transfer matrix
+                X: float
+                    Initial position of the local operator prior
+                T: float
+                    Initial time of the local operator prior
+
+            kwargs:
+                horizontal: bool
+                    True if the transfer matrix is horizontal in the 45deg rotated picture
+                terminate: bool
+                    True where path is contracted with second point operator, effectively 
+                    terminating and returning a singular value
+
+            return:
+                a: np.ndarray
+                    Where there are still open output legs a is returned to skeleton fun
+                or
+                sum: complex
+                    Where terminated returns contribution of path to path integral
+                
         '''
 
         if not terminate:
@@ -127,7 +174,7 @@ def path_integral(x:float,
 
             return np.einsum('ab,b->a',defect,a)
 
-        elif terminate and (int(2*(t+x))%2 == 0):
+        elif ((int(2*(t+x))%2 == 0) and horizontal) or ((int(2*(t+x))%2 != 0) and not horizontal):
 
             # print('    TERMINATING WITH DIRECT')
 
@@ -206,23 +253,38 @@ def path_integral(x:float,
 
         X,T = 0,0
 
-        for i in range(len(v)):
+        if v == []:
+            return transfer_matrix(a,h[-1],X,T,terminate=True)
+        
+        elif len(v) == len(h):
+            for i in range(len(v)-1):
 
-            a = transfer_matrix(a,h[i],X,T)
+                a = transfer_matrix(a,h[i],X,T)
+                X += (h[i] - 1) / 2
+                T += h[i]/2
 
-            X += (h[i] - 1) / 2
-            T += h[i]/2
+                a = transfer_matrix(a,v[i],X,T,horizontal=True)
+                X -= (h[i] - 1) / 2
+                T += v[i]/2
 
-            # print(f'    GLOBAL T:{T}, X:{X}')
+            a = transfer_matrix(a,h[-1],X,T)
+            X += (h[-1] - 1) / 2
+            T += h[-1]/2
+            
+            return transfer_matrix(a,v[-1],X,T,terminate=True,horizontal=False)
 
-            a = transfer_matrix(a,v[i],X,T,horizontal=False)
+        else:
+            for i in range(len(v)):
 
-            X -= (v[i] - 1) / 2
-            T += v[i]/2
+                a = transfer_matrix(a,h[i],X,T)
+                X += (h[i] - 1) / 2
+                T += h[i]/2
 
-            # print(f'    GLOBAL T:{T}, X:{X}')
+                a = transfer_matrix(a,v[i],X,T,horizontal=False)
+                X -= (v[i] - 1) / 2
+                T += v[i]/2
 
-        return transfer_matrix(a,h[-1],X,T,terminate=True) if len(h) > len(v) else np.einsum('a,a->',a,b)
+            return transfer_matrix(a,h[-1],X,T,terminate=True)
 
     a, b = np.array([0,1,0,0],dtype='complex_'), np.array([0,1,0,0],dtype='complex_')
 
@@ -239,6 +301,8 @@ def path_integral(x:float,
 
     list_generator(x_v-1,vertical_data,k=k)
     list_generator(x_h,horizontal_data,k=k)
+
+    print(f'\nTIME {t}, POSITION {x} we have x_h:{x_h}, x_v:{x_v}')
 
     n = 1
     sum = 0
@@ -328,6 +392,9 @@ def get_gates(q:int,
         for file in files:
 
             res = rx.match(file)
+
+            if not res: continue
+
             seed = int(res.group(1))
 
             gates.append(seed)
