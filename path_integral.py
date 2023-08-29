@@ -1,6 +1,6 @@
-import numpy as np
-from time import time
 from P_generator import Exponential_Map
+from time import time
+import numpy as np
 import pandas as pd
 import re
 import os
@@ -8,66 +8,33 @@ import math
 
 def main():
 
-    # q, k, tspan, depth = 2, 3, 10, 6
+    q, k, tspan, e, depth = 2, 3, 10, 1e-7, 6
 
-    # pertubations = [3e-07,5e-07]
+    start = time()
 
-    # start = time()
-
-    # generate_data(q,tspan,pertubations,k=k)
+    generate_data(q,tspan,e,k=k)
     
-    # end = time()
+    end = time()
 
-    # print('Total time taken to run:', end-start, '\n')
-
-    e = 1e-7
-    q = 2
-    W_path = 'data/FoldedTensors/DU_2_33296628.csv'
-    P_path = 'data/FoldedPertubations/P_2_866021931.csv'
-    W = np.loadtxt(W_path,delimiter=',',dtype='complex_')
-    G = np.loadtxt(P_path,delimiter=',',dtype='complex_')
-    P = Exponential_Map(e,G)
-    PW = np.einsum('ab,bc->ac',P,W).reshape([q**2,q**2,q**2,q**2])
-    tspan = 8
-
-    df = pd.DataFrame()
-    err = pd.Series()
-
-    for T in range(2*tspan+1):
-        t = float(T)/2
-
-        data = np.array([])
-        inds = np.array([])
-
-        for x in range(-T+1,T+1):
-            x = float(x)/2
-            inds = np.append(inds,x)
-            data = np.append(data,[path_integral(x,t,PW)])
-
-        print(f'computed for T = {t}s')
-
-        s = pd.Series(data,inds,name=t)        
-        df = pd.concat([df, s.to_frame().T])
-        err[t] = np.abs(sum(data))
-
-    df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
-    df = df.fillna(0)
-
-    print(df)
-    print(err)
+    print('Total time taken to run:', end-start, '\n')
 
 def generate_data(q:int,
                   tspan:int,
-                  pertubations:np.ndarray,
-                  k:int = 0):
+                  e:float,
+                  k:int = 0,
+                  depth:int = 0):
 
-    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
-    rx = re.compile(rstr)
-
-    if k:
+    if k and depth:
+        path = 'data/LightconeFrontTruncated'
+    elif k:
         path = 'data/PathIntegralTruncated'
+    elif depth:
+        path = 'data/LightconeFront'
     else:
         path = 'data/PathIntegral'
+    
+    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
+    rx = re.compile(rstr)
 
     for _, _, files in os.walk('data/FoldedTensors'):
         for file in files[:1]:
@@ -77,140 +44,67 @@ def generate_data(q:int,
     
             W = np.loadtxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',
                             delimiter=',',dtype='complex_')
-            
-            # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
-            # rx2 = re.compile(rstr2)
 
             P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
                            delimiter=',',dtype='complex_')
             
-            for e in pertubations:
+            G = Exponential_Map(e,P)
 
-                # res2 = rx2.match(file)
+            PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
 
-                # if not res2: continue
+            I, Z = np.zeros(q**2), np.zeros(q**2)
+            I[0], Z[1] = 1, 1
 
-                # e = res2.group(1)
-                
-                G = Exponential_Map(e,P)
+            IZ = np.einsum('a,b->ab',I,Z).flatten()
+            ZI = np.einsum('a,b->ab',Z,I).flatten()
 
-                PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
+            Q = IZ + ZI
 
-                I, Z = np.zeros(q**2), np.zeros(q**2)
-                I[0], Z[1] = 1, 1
+            Q2 = np.linalg.norm(np.einsum('ab,b->a',PW.reshape(q**4,q**4),Q) - Q)
+            print('\n     Check Q-Conservation of peturbed P: ', Q2, '\n')
 
-                IZ = np.einsum('a,b->ab',I,Z).flatten()
-                ZI = np.einsum('a,b->ab',Z,I).flatten()
+            df = pd.DataFrame()
+            err = pd.Series()
 
-                Q = IZ + ZI
+            for T in range(2*tspan+1):
 
-                Q2 = np.linalg.norm(np.einsum('ab,b->a',PW.reshape(q**4,q**4),Q) - Q)
-                print('\n     Check Q-Conservation of peturbed P: ', Q2, '\n')
+                t = float(T)/2
 
-                df = pd.DataFrame()
-                err = pd.Series()
+                data = np.array([])
+                inds = np.array([])
 
-                for T in range(2*tspan+1):
+                if depth:
+                    minT = T - depth
+                else:
+                    minT = -T
 
-                    t = float(T)/2
+                for x in range(minT,T+1):
+                    x = float(x)/2
+                    inds = np.append(inds,x)
+                    data = np.append(data,[path_integral(x,t,PW,k=k)])
 
-                    data = np.array([])
-                    inds = np.array([])
+                s = pd.Series(data,inds,name=t)
 
-                    for x in range(-T,T+1):
-                        x = float(x)/2
-                        inds = np.append(inds,x)
-                        data = np.append(data,[path_integral(x,t,PW,k=k)])
-
-                    s = pd.Series(data,inds,name=t)
-
-                    df = pd.concat([df, s.to_frame().T])
-                    err[t] = np.abs(sum(data))
-                
-                df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
-                df = df.fillna(0)
-                print(df,'\n')
-
-                try:
-                    df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
-                except:
-                    os.mkdir(path)
-                    df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
-
-                try:
-                    err.to_csv(f'{path}/charge_conservation/{q}_{seed}_{e}.csv', index=False)
-                except:
-                    os.mkdir(f'{path}/charge_conservation')
-                    err.to_csv(f'{path}/charge_conservation/{q}_{seed}_{e}.csv', index=False)
-
-def generate_conefront(q:int,
-                       tspan:int,
-                       pertubations:np.ndarray,
-                       depth:int,
-                       k:int = 0):
-    
-    rstr = r'DU_' + str(q) + r'_([0-9]*).csv'
-    rx = re.compile(rstr)
-
-    if k:
-        path = f'data/LightconeFrontTruncated'
-    else:
-        path = 'data/LightconeFront'
-
-    for _, _, files in os.walk('data/FoldedTensors'):
-        for file in files[:1]:
-
-            res = rx.match(file)
-            seed = res.group(1)
-    
-            W = np.loadtxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',
-                            delimiter=',',dtype='complex_')
+                df = pd.concat([df, s.to_frame().T])
+                err[t] = np.abs(sum(data))
             
-            # rstr2 = f'P_{q}_' + r'([0-9e\-.]*).csv'
-            # rx2 = re.compile(rstr2)
+            df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
+            df = df.fillna(0)
+            if depth: df = df.iloc[:,depth:]
+            df = df.iloc[::-1]
+            print(df,'\n')
 
-            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',                          
-                           delimiter=',',dtype='complex_')
-            
-            for e in pertubations:
+            try:
+                df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
+            except:
+                os.mkdir(path)
+                df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
 
-                # res2 = rx2.match(file)
-
-                # if not res2: continue
-
-                # e = res2.group(1)
-                
-                G = Exponential_Map(e,P)
-
-                PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
-
-                df = pd.DataFrame()
-
-                for T in range(2*tspan+1):
-
-                    t = float(T)/2
-
-                    data = np.array([])
-                    inds = np.array([])
-
-                    for x in range(T-depth,T+1):
-                        x = float(x)/2
-                        inds = np.append(inds,x)
-                        data = np.append(data,[path_integral(x,t,PW,k=k)])
-
-                    s = pd.Series(data,inds,name=t)
-                    df = pd.concat([df, s.to_frame().T])
-                
-                df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
-                df = df.fillna(0)
-                df = df.iloc[:,depth:]
-                print(df,'\n')
-
-                try:
-                    df.to_csv(path+f'/{q}_{seed}_{e}.csv')
-                except:
-                    os.mkdir(path)
-                    df.to_csv(path+f'/{q}_{seed}_{e}.csv')
+            try:
+                err.to_csv(f'{path}/charge_conservation/QC_{q}_{seed}_{e}.csv', index=False)
+            except:
+                os.mkdir(f'{path}/charge_conservation')
+                err.to_csv(f'{path}/charge_conservation/QC_{q}_{seed}_{e}.csv', index=False)
 
 def path_integral(x:float,
                   t:float,
@@ -312,12 +206,13 @@ def path_integral(x:float,
                 for v in l2:
                     sum += skeleton(h,v,a)
         except:pass
-                        
-        try:
-            l1, v = horizontal_data[n], vertical_data[0]
-            for h in l1:
-                sum += skeleton(h,[],a)
-        except:pass
+
+        if n == 1:          
+            try:
+                l1, v = horizontal_data[n], vertical_data[0]
+                for h in l1:
+                    sum += skeleton(h,[],a)
+            except:pass
 
         n += 1
 
