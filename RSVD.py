@@ -119,6 +119,5 @@ def rsvd(A,k,q=2,nover=2):
     U,S,V = U[:,:k],S[:k],V[:k,:]
     return U,S,V
 
-
 if __name__ == '__main__':
     main()
