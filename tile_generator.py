@@ -67,13 +67,13 @@ def get_tiles(W:np.ndarray,
                 h_direct = h_direct.reshape(-1,*h_direct.shape[-d_v:])
                 h_direct = h_direct.reshape(*h_direct.shape[:1],-1)
 
-                np.savetxt(f'TileZoo/h_direct_{d_h}x{d_v}',h_direct,delimiter=',')
+                np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}',h_direct,delimiter=',')
 
             else:
                 h_direct = W[0,:,:,0]
                 for i in range(d_h-1):
                     h_direct = np.einsum('ab,bc->ac',h_direct,W[0,:,:,0])
-                np.savetxt(f'TileZoo/h_direct_{d_h}x{d_v}',h_direct,delimiter=',')
+                np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}',h_direct,delimiter=',')
 
     # HORIZONTAL DEFECT TILE
 
@@ -108,10 +108,10 @@ def get_tiles(W:np.ndarray,
                 h_defect = h_defect.reshape(-1,*h_defect.shape[-d_v:])
                 h_defect = h_defect.reshape(*h_defect.shape[:1],-1)
 
-                np.savetxt(f'TileZoo/h_defect_{d_h}x{d_v}',h_defect,delimiter=',')
+                np.savetxt(f'data/TileZoo/h_defect_{d_h}x{d_v}',h_defect,delimiter=',')
 
             else:
-                np.savetxt(f'TileZoo/h_defect_{d_h}x{d_v}', W[:,0,:,0],delimiter=',')
+                np.savetxt(f'data/TileZoo/h_defect_{d_h}x{d_v}', W[:,0,:,0],delimiter=',')
 
     ### VERTICAL DIRECT TILE
 
@@ -142,13 +142,13 @@ def get_tiles(W:np.ndarray,
                 v_direct = v_direct.reshape(-1,*v_direct.shape[-d_h:])
                 v_direct = v_direct.reshape(*v_direct.shape[:1],-1)
 
-                np.savetxt(f'TileZoo/v_direct_{d_h}x{d_v}',v_direct,delimiter=',')
+                np.savetxt(f'data/TileZoo/v_direct_{d_h}x{d_v}',v_direct,delimiter=',')
 
             else:
                 v_direct = W[:,0,0,:]
                 for i in range(d_v-1):
                     v_direct = np.einsum('ab,bc->ac',v_direct,W[:,0,0,:])
-                np.savetxt(f'TileZoo/v_direct_{d_h}x{d_v}',v_direct,delimiter=',')
+                np.savetxt(f'data/TileZoo/v_direct_{d_h}x{d_v}',v_direct,delimiter=',')
 
     ### VERTICAL DEFECT TILE
 
