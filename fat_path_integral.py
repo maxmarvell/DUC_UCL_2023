@@ -6,8 +6,8 @@ from scipy.linalg import expm
 
 def main():
 
-    d = 2
-    T = 9.0
+    d = 3
+    T = 24.0
     q = 2
     canvas = path_integral(T,d,q)
     plt.imshow(np.abs(canvas),cmap='hot', interpolation='nearest')
@@ -121,7 +121,7 @@ def path_integral(T:float, d:int, q:int):
                 a = np.einsum('ab,b->a',Tile_Zoo["Main h_defect"],a)
                 #return a[q**(2*(d-1))]
                 return a[1]
-                
+
             else:
                 a = np.einsum('ab,b->a',defect,a)
                 #return a[q**(2*(dim_h%d - 1))] if status == "Left Trim" else a[q**(2*(d-1))]
@@ -218,11 +218,11 @@ def path_integral(T:float, d:int, q:int):
                 Tile_Zoo["Low Trim v_defect"] = np.loadtxt(f"./Tile_Zoo/v_defect_{d}x{dim_v%d}",delimiter=',',dtype='complex_')
                 a = np.zeros(q**(2*(dim_v%d)))
                 a[q**(2*(dim_v%d - 1))] = 1.0
-                #a[1] = 1.0
+                list_generator((dim_v//d + 1)-1,vertical_data)
             else:
                 a = np.zeros(q**(2*d))
                 a[q**(2*(d - 1))] = 1.0
-                #a[1] = 1.0
+                list_generator((dim_v//d)-1,vertical_data)
             
 
             if (dim_h%d) != 0:
@@ -230,6 +230,9 @@ def path_integral(T:float, d:int, q:int):
                 Tile_Zoo["Left Trim h_defect"] = np.loadtxt(f"./Tile_Zoo/h_defect_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
                 Tile_Zoo["Left Trim v_direct"] = np.loadtxt(f"./Tile_Zoo/v_direct_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
                 Tile_Zoo["Left Trim v_defect"] = np.loadtxt(f"./Tile_Zoo/v_defect_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
+                list_generator((dim_h//d + 1),horizontal_data,k=k)
+            else:
+                list_generator((dim_h//d),horizontal_data,k=k)
 
 
             if (dim_v%d) != 0 and (dim_h%d) != 0:
@@ -237,9 +240,6 @@ def path_integral(T:float, d:int, q:int):
                 Tile_Zoo["Corner h_defect"] = np.loadtxt(f"./Tile_Zoo/h_defect_{dim_h%d}x{dim_v%d}",delimiter=',',dtype='complex_')
 
 
-
-            list_generator(dim_h,horizontal_data,k=k)
-            list_generator(dim_v-1,vertical_data)
 
             n = 1
             sum = 0.0
