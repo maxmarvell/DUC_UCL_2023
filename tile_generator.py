@@ -75,9 +75,16 @@ def get_tiles(W:np.ndarray,
 
             else:
                 h_direct = W[0,:,:,0]
+
                 for i in range(d_h-1):
                     h_direct = np.einsum('ab,bc->ac',h_direct,W[0,:,:,0])
-                np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+
+                try:
+                    np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+                except:
+                    os.mkdir('data/TileZoo')
+                    np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+
 
     # HORIZONTAL DEFECT TILE
 
