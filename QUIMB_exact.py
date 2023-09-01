@@ -16,7 +16,7 @@ def main():
 
     q = 2
     timespan = 9
-    pertubations = np.arange(0.0000001, 0.0000007, 0.00000001)
+    pertubations = [1e-7, 3e-7, 5e-7]
 
     start = time()
 
@@ -73,17 +73,15 @@ def generate_data(q:int,
                 s = pd.Series(data,inds,name=t)
             
                 df = pd.concat([df, s.to_frame().T])
-                df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
-                df = df.fillna(0)
-                df = df.iloc[::-1]
-                print(df,'\n')
+                print(f'Time computed up to: {t}')
 
                 err[t] = np.abs(sum(data))
-
+            
             end = time()
 
             df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
             df = df.fillna(0)
+            df = df.iloc[::-1]
             print(df,'\n')
 
             print('Time taken to compute light cone: ', end-start)
