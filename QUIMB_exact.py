@@ -16,16 +16,10 @@ def main():
 
     q = 2
     timespan = 9
-    pertubations = [1e-7, 3e-7, 5e-7]
-
-    start = time()
+    pertubations = [1e-7,3e-7,5e-7]
 
     for e in pertubations:
         generate_data(q,timespan,e)
-
-    end = time()
-
-    print('\nTotal time taken to run:', end-start)
 
 def generate_data(q:int,
                   tspan:int,
@@ -62,10 +56,17 @@ def generate_data(q:int,
 
                 t = float(T)/2
 
+                if t == 0:
+                    s = pd.Series(np.array([1],dtype='complex_'),np.array([0]),name=t)        
+                    df = pd.concat([df, s.to_frame().T])
+                    err[t] = 1
+                    print(f'computed for T = {t}s')
+                    continue
+
                 data = np.array([],dtype='complex_')
                 inds = np.array([])
 
-                for x in range(-T,T+1):
+                for x in range(-T+1,T+1):
                     x = float(x) / 2
                     inds = np.append(inds,x)
                     data = np.append(data,exact_contraction(x,t,q,PW))
@@ -73,7 +74,7 @@ def generate_data(q:int,
                 s = pd.Series(data,inds,name=t)
             
                 df = pd.concat([df, s.to_frame().T])
-                print(f'Time computed up to: {t}')
+                print(f'\nTime computed up to: {t}')
 
                 err[t] = np.abs(sum(data))
             
@@ -82,21 +83,27 @@ def generate_data(q:int,
             df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
             df = df.fillna(0)
             df = df.iloc[::-1]
-            print(df,'\n')
+            print('\n',df,'\n')
 
-            print('Time taken to compute light cone: ', end-start)
+            print('Time taken to compute light cone with complete contraction: ', end-start)
 
-            try:
-                df.to_csv(f'data/TensorExact/{q}_{seed}_{e}.csv', index=False)
-            except:
-                os.mkdir('data/TensorExact')
-                df.to_csv(f'data/TensorExact/{q}_{seed}_{e}.csv', index=False)
+            path = 'data/TensorExact'
 
             try:
-                err.to_csv(f'data/TensorExact/charge_conservation/QC_{q}_{seed}_{e}.csv', index=False)
+                df.to_csv(f'{path}/{q}_{seed}_{e}.csv',
+                          index=False,header=False)
             except:
-                os.mkdir('data/TensorExact/charge_conservation')
-                err.to_csv(f'data/TensorExact/charge_conservation/QC_{q}_{seed}_{e}.csv', index=False)
+                os.mkdir(path)
+                df.to_csv(f'{path}/{q}_{seed}_{e}.csv',
+                          index=False,header=False)
+
+            try:
+                err.to_csv(f'{path}/charge_conservation/QC_{q}_{seed}_{e}.csv',
+                           index=False,header=False)
+            except:
+                os.mkdir(f'{path}/charge_conservation')
+                err.to_csv(f'{path}/charge_conservation/QC_{q}_{seed}_{e}.csv',
+                           index=False,header=False)
 
 def exact_contraction(x:float,
                       t:float,
@@ -106,80 +113,52 @@ def exact_contraction(x:float,
     
     if x == 0 and t == 0:
         return 1
-
-    TN = DU_network_construction(x,t,q,W,draw)
-
-    return TN.contract()
-
-def MPS_state(x:float,
-              t:float,
-              TN:qtn.TensorNetwork):
+    
+    Z, I = np.zeros([q**2]), np.zeros([q**2])
+    Z[1], I[0] = 1, 1
 
     x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
 
-    if x_h == 1 or x_v == 1:
-        return
+    DU = [[qtn.Tensor(
 
-    for i in range(x_h):
-        tags = [f'UNITARY_{i},{j}' for j in range(x_v)]
-        print(tags)
-        TN = TN.contract(tags=tags)
+        W.reshape([q**2,q**2,q**2,q**2]),
+        inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
+                f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}'),
+        tags=[f'UNITARY_{i},{j}'])
 
-    TN.draw()
+        for i in range(x_h)] for j in range(x_v)]
 
-    pass
+    a = [qtn.Tensor(Z,inds=('k0,1',),tags=['Z'])]
+    
+    if int(2*(t+x))%2 == 0:
+        b = [qtn.Tensor(Z,inds=(f'k{2*x_h},{2*x_v-1}',),tags=['Z'])]
+        e3 = [qtn.Tensor(I,inds=(f'k{2*x_h},{2*j+1}',),tags=['I']) for j in range(x_v-1)]
+        e4 = [qtn.Tensor(I,inds=(f'k{2*j+1},{2*x_v}',),tags=['I']) for j in range(x_h)]
+    else:
+        b = [qtn.Tensor(Z,inds=(f'k{2*x_h-1},{2*x_v}',),tags=['Z'])]
+        e3 = [qtn.Tensor(I,inds=(f'k{2*x_h},{2*j+1}',),tags=['I']) for j in range(x_v)]
+        e4 = [qtn.Tensor(I,inds=(f'k{2*j+1},{2*x_v}',),tags=['I']) for j in range(x_h-1)]
 
-def DU_network_construction(x:float,
-                            t:float,
-                            q:int,
-                            W:np.ndarray,
-                            draw:bool = False):
-        
-        Z, I = np.zeros([q**2]), np.zeros([q**2])
-        Z[1], I[0] = 1, 1
+    e1 = [qtn.Tensor(I,inds=(f'k{2*j+1},0',),tags=['I']) for j in range(x_h)]
+    e2 = [qtn.Tensor(I,inds=(f'k0,{2*j+1}',),tags=['I']) for j in range(1,x_v)]
 
-        x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
+    TN = qtn.TensorNetwork((DU,a,b,e1,e2,e3,e4))
 
-        DU = [[qtn.Tensor(
+    if draw:
 
-            W.reshape([q**2,q**2,q**2,q**2]),
-            inds=(f'k{2*i+1},{2*j+2}',f'k{2*i+2},{2*j+1}',
-                  f'k{2*i},{2*j+1}',f'k{2*i+1},{2*j}'),
-            tags=[f'UNITARY_{i},{j}'])
+        fix = {
+            'UNITARY_0,0': (0, 0),
+            f'UNITARY_0,{x_v-1}': (0, 1),
+            f'UNITARY_{x_h-1},0': (1, 0),
+            f'UNITARY_{x_h-1},{x_v-1}': (1, 1),
+        }
 
-            for i in range(x_h)] for j in range(x_v)]
-
-        a = [qtn.Tensor(Z,inds=('k0,1',),tags=['Z'])]
-        
-        if int(2*(t+x))%2 == 0:
-            b = [qtn.Tensor(Z,inds=(f'k{2*x_h},{2*x_v-1}',),tags=['Z'])]
-            e3 = [qtn.Tensor(I,inds=(f'k{2*x_h},{2*j+1}',),tags=['I']) for j in range(x_v-1)]
-            e4 = [qtn.Tensor(I,inds=(f'k{2*j+1},{2*x_v}',),tags=['I']) for j in range(x_h)]
+        if x_h > 1 and x_v > 1:
+            TN.draw(fix=fix)
         else:
-            b = [qtn.Tensor(Z,inds=(f'k{2*x_h-1},{2*x_v}',),tags=['Z'])]
-            e3 = [qtn.Tensor(I,inds=(f'k{2*x_h},{2*j+1}',),tags=['I']) for j in range(x_v)]
-            e4 = [qtn.Tensor(I,inds=(f'k{2*j+1},{2*x_v}',),tags=['I']) for j in range(x_h-1)]
+            TN.draw()
 
-        e1 = [qtn.Tensor(I,inds=(f'k{2*j+1},0',),tags=['I']) for j in range(x_h)]
-        e2 = [qtn.Tensor(I,inds=(f'k0,{2*j+1}',),tags=['I']) for j in range(1,x_v)]
-
-        TN = qtn.TensorNetwork((DU,a,b,e1,e2,e3,e4))
-
-        if draw:
-
-            fix = {
-                'UNITARY_0,0': (0, 0),
-                f'UNITARY_0,{x_v-1}': (0, 1),
-                f'UNITARY_{x_h-1},0': (1, 0),
-                f'UNITARY_{x_h-1},{x_v-1}': (1, 1),
-            }
-
-            if x_h > 1 and x_v > 1:
-                TN.draw(fix=fix)
-            else:
-                TN.draw()
-
-        return TN
+    return TN.contract()
 
 if __name__ == '__main__':
     main()
