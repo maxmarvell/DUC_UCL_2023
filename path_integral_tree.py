@@ -10,9 +10,9 @@ import re
 
 def main():
 
-    pertubations = [1e-7,3e-7,5e-7]
+    pertubations = [7e-8,8e-8,1e-7,3e-7,5e-7]
     q = 2
-    tspan = 11
+    tspan = 300
     k = 3
 
     for e in pertubations:
@@ -51,6 +51,8 @@ def generate_data(q:int,
                   e:float,
                   k:int = np.inf):
     
+    start = time()
+    
     if k != np.inf:
         path = 'data/PathIntegralTreeTruncated'
     else:
@@ -85,7 +87,10 @@ def generate_data(q:int,
 
             err = pd.Series()
 
-            for T in range(2*tspan+1):
+            T = 0
+            end = time()
+
+            while end-start < tspan:
 
                 t = float(T)/2
 
@@ -94,6 +99,7 @@ def generate_data(q:int,
                     df = pd.concat([df, s.to_frame().T])
                     err[t] = 1
                     print(f'\ncomputed for T = {t}s')
+                    T += 1
                     continue
 
                 data = np.array([])
@@ -109,6 +115,9 @@ def generate_data(q:int,
                 s = pd.Series(data,inds,name=t)        
                 df = pd.concat([df, s.to_frame().T])
                 err[t] = np.abs(sum(data))
+
+                T += 1
+                end = time()
 
             df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
             df = df.fillna(0)
