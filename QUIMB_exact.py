@@ -1,5 +1,5 @@
-from time import time
 from P_generator import Exponential_Map
+from time import time
 import quimb.tensor as qtn
 import pandas as pd
 import numpy as np
@@ -15,8 +15,8 @@ import os
 def main():
 
     q = 2
-    timespan = 9
-    pertubations = [1e-7,3e-7,5e-7]
+    timespan = 50
+    pertubations = [9e-8,1e-7,3e-7,5e-7]
 
     for e in pertubations:
         generate_data(q,timespan,e)
@@ -50,9 +50,11 @@ def generate_data(q:int,
             df = pd.DataFrame()
             err = pd.Series()
 
+            T = 0
             start = time()
+            end = time()
 
-            for T in range(2*tspan+1):
+            while end-start < tspan:
 
                 t = float(T)/2
 
@@ -60,6 +62,8 @@ def generate_data(q:int,
                     s = pd.Series(np.array([1],dtype='complex_'),np.array([0]),name=t)        
                     df = pd.concat([df, s.to_frame().T])
                     err[t] = 1
+                    end = time()
+                    T += 1
                     print(f'computed for T = {t}s')
                     continue
 
@@ -77,8 +81,10 @@ def generate_data(q:int,
                 print(f'\nTime computed up to: {t}')
 
                 err[t] = np.abs(sum(data))
+
+                T += 1
+                end = time()
             
-            end = time()
 
             df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
             df = df.fillna(0)

@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from path_integral import list_generator
 from P_generator import Exponential_Map
 from time import time
@@ -10,13 +9,13 @@ import re
 
 def main():
 
-    pertubations = [7e-8,8e-8,1e-7,3e-7,5e-7]
+    pertubations = [9e-8,1e-7,3e-7,5e-7]
     q = 2
-    tspan = 300
+    tspan = 200
     k = 3
 
     for e in pertubations:
-        generate_data(q,tspan,e)
+        generate_data(q,tspan,e,k=)
 
 class Node:
     def __init__(self,data:complex=None):
@@ -51,8 +50,6 @@ def generate_data(q:int,
                   e:float,
                   k:int = np.inf):
     
-    start = time()
-    
     if k != np.inf:
         path = 'data/PathIntegralTreeTruncated'
     else:
@@ -82,12 +79,10 @@ def generate_data(q:int,
 
             tree = Tree()
             df = pd.DataFrame()
-
-            start = time()
-
             err = pd.Series()
 
             T = 0
+            start = time()
             end = time()
 
             while end-start < tspan:
@@ -99,6 +94,7 @@ def generate_data(q:int,
                     df = pd.concat([df, s.to_frame().T])
                     err[t] = 1
                     print(f'\ncomputed for T = {t}s')
+                    end = time()
                     T += 1
                     continue
 
@@ -123,10 +119,6 @@ def generate_data(q:int,
             df = df.fillna(0)
             df = df.iloc[::-1]
             print('\n',df,'\n')
-
-            end = time()
-
-            print(f'Time for tree path integral: {end-start}\n') 
 
             try:
                 df.to_csv(f'{path}/{q}_{seed}_{e}.csv',
@@ -278,18 +270,6 @@ def path_integral(x:float,
         n += 1
 
     return sum
-
-def printTree(root:Node, level:int=0):
-
-    if root.left:
-        print("  " * level, root.left.data)
-    if root.right:
-        print("  " * level, root.right.data)
-
-    if root.left:
-        printTree(root.left, level + 1)
-    if root.right:
-        printTree(root.right, level + 1)
 
 if __name__ == '__main__':
     main()

@@ -3,17 +3,16 @@ from path_integral import path_integral as PI
 from QUIMB_exact import exact_contraction
 from P_generator import Exponential_Map
 from time import time
-from RSVD import rsvd
 import quimb.tensor as qtn
 import numpy as np 
 import math
 
 def main():
-    W = np.loadtxt(f'data/FoldedTensors/DU_2_33296628.csv',delimiter=',',dtype='complex_')
-    P = np.loadtxt(f'data/FoldedPertubations/P_2_866021931.csv',delimiter=',',dtype='complex_')
-    e = 1e-7
+    W = np.loadtxt(f'Sample_Tensor.csv',delimiter=',',dtype='complex_')
+    P = np.loadtxt(f'Sample_Perturbation.csv',delimiter=',',dtype='complex_')
+    e = 4e-7
     q = 2
-    d = 5
+    d = 3
 
     G = Exponential_Map(e,P)
     PW = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
@@ -21,23 +20,28 @@ def main():
     I, Z = np.zeros(q**2,dtype='complex_'), np.zeros(q**2,dtype='complex_')
     I[0], Z[1] = 1, 1
 
-    a = np.einsum('a,b,c->abc',I,I,I,I,Z).reshape(-1)
-    b = np.einsum('a,b,c->abc',Z,I,I,I,I).reshape(-1)
+    a = np.einsum('a,b,c->abc',I,I,Z).reshape(-1)
+    b = np.einsum('a,b,c->abc',Z,I,I).reshape(-1)
 
     start = time()
-    val = path_integral(0.5,8.5,d,a,b,K=10)
+    val = path_integral(2.0,4.5,d,a,b,K=10)
     end = time()
-    print(f'\nTruncated case: {val} computed in {end-start}s')
+    print(f'\nTruncated case: {np.abs(val)} computed in {end-start}s')
 
-    # start = time()
-    # val = path_integral(0.5,8.5,d,a,b)
-    # end = time()
+    start = time()
+    val = path_integral(2.0,4.5,d,a,b)
+    end = time()
+    print(f'\nComplete case: {np.abs(val)} computed in {end-start}s')
 
-    # print(f'\nComplete case: {val} computed in {end-start}s')
+    start = time()
+    val = PI(2.0,4.5,PW)
+    end = time()
+    print(f'\nPath Integral: {np.abs(val)} computed in {end-start}s')
 
-    # print((PI(0,5.5,PW)))
-
-    # print((exact_contraction(0,5.5,q,PW)))
+    start = time()
+    val = exact_contraction(2.5,4.5,q,PW)
+    end = time()
+    print(f'\nQUIMB: {(val)} computed in {end-start}s\n')
 
 def path_integral(x:float,
                   t:float,
@@ -79,21 +83,16 @@ def path_integral(x:float,
             defect = tiles['v_defect']
 
         if not terminate:
-            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
             for _ in range(l-1):
                 a = fun(a,*direct)
             return fun(a,*defect)
 
-        elif terminate and (int(2*(t+x))%2 == 0):
-            print('    TERMINATING WITH DIRECT')
-            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
+        elif ((int(2*(t+x))%2 == 0) and horizontal) or ((int(2*(t+x))%2 != 0) and not horizontal):
             for _ in range(l):
                 a = fun(a,*direct)
             return np.einsum('a,a->',a,b)
 
         else:
-            print('      TERMINATING WITH DEFECT')
-            print(f'      Computing transfer matrix len {l}, Horizontal? {horizontal}')
             for _ in range(l-1):
                 a = fun(a,*direct)
             a = fun(*defect)
@@ -107,17 +106,18 @@ def path_integral(x:float,
             input skeleton diagram
         '''
 
-        for i in range(len(v)):
+        if len(v) == len(h):
+            for i in range(len(v)-1):
+                a = transfer_matrix(a,h[i])
+                a = transfer_matrix(a,v[i],horizontal=False)
+            a = transfer_matrix(a,h[-1])
+            return transfer_matrix(a,v[-1],terminate=True,horizontal=False)
 
-            a = transfer_matrix(a,h[i])
-
-            print(f'    Computed horizontal transfer matrix of length {h[i]}')
-
-            a = transfer_matrix(a,v[i],horizontal=False)
-
-            print(f'    Computed vertical transfer matrix of length {v[i]}')
-
-        return transfer_matrix(a,h[-1],terminate=True) if len(h) > len(v) else np.einsum('a,a->',a,b)
+        else:
+            for i in range(len(v)):
+                a = transfer_matrix(a,h[i])
+                a = transfer_matrix(a,v[i],horizontal=False)
+            return transfer_matrix(a,h[-1],terminate=True)
     
     tiles = tile_SVD(d,K)
     
@@ -129,7 +129,7 @@ def path_integral(x:float,
     x_h /= d
     x_v /= d
 
-    k = min(x_h,x_v)
+    k = int(min(x_h,x_v))
 
     list_generator(int(x_v-1),vertical_data,k=k)
     list_generator(int(x_h),horizontal_data,k=k+1)
@@ -137,34 +137,26 @@ def path_integral(x:float,
     n = 1
     sum = 0
 
-    while n < k:
-
-        print(f'\nComputing skeleton diagram for {n} turns!')
+    while n <= k:
 
         try:
             l1, l2 = horizontal_data[n], vertical_data[n]
             for h in l1:
                 for v in l2:
-                    print(f'\n   Diagram h:{h} and v:{v}')
                     sum += skeleton(h,v,a)
-                    print(f'             Running sum {sum}')
         except:pass
             
         try:
             l1, l2 = horizontal_data[n+1], vertical_data[n]
             for h in l1:
                 for v in l2:
-                    print(f'\n   Diagram h:{h} and v:{v}')
                     sum += skeleton(h,v,a)
-                    print(f'             Running sum {sum}')
         except:pass
                         
         try:
-            l1, v = horizontal_data[n], vertical_data[0]
+            l1, _ = horizontal_data[n], vertical_data[0]
             for h in l1:
-                print(f'\n   Diagram h:{h} and v:{v}')
                 sum += skeleton(h,[])
-                print(f'             Running sum {sum}')
         except:pass
 
         n += 1

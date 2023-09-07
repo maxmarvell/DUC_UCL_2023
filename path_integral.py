@@ -8,11 +8,15 @@ import math
 
 def main():
 
-    q, k, tspan, e, depth = 2, 3, 10, 1e-7, 6
+    q = 2
+    k = 3
+    tspan = 12
+    pertubations = [1e-7,3e-7,5e-7]
 
     start = time()
 
-    generate_data(q,tspan,e,k=k)
+    for e in pertubations:
+        generate_data(q,tspan,e,k=k)
     
     end = time()
 
@@ -21,12 +25,12 @@ def main():
 def generate_data(q:int,
                   tspan:int,
                   e:float,
-                  k:int = 0,
+                  k:int = np.inf,
                   depth:int = 0):
 
-    if k and depth:
+    if k != np.inf and depth:
         path = 'data/LightconeFrontTruncated'
-    elif k:
+    elif k != np.inf:
         path = 'data/PathIntegralTruncated'
     elif depth:
         path = 'data/LightconeFront'
@@ -87,12 +91,13 @@ def generate_data(q:int,
 
                 df = pd.concat([df, s.to_frame().T])
                 err[t] = np.abs(sum(data))
+                print(f'Time computed up to: {t}')
             
             df = df.reindex(sorted(df.columns,key=lambda num: float(num)), axis=1)
             df = df.fillna(0)
             if depth: df = df.iloc[:,depth:]
             df = df.iloc[::-1]
-            print(df,'\n')
+            print('\n',df,'\n')
 
             try:
                 df.to_csv(f'{path}/{q}_{seed}_{e}.csv', index=False)
@@ -109,7 +114,7 @@ def generate_data(q:int,
 def path_integral(x:float,
                   t:float,
                   W:np.ndarray,
-                  k:int = 0):
+                  k:int = np.inf):
 
     def transfer_matrix(a:np.ndarray,
                         l:int,
@@ -140,13 +145,13 @@ def path_integral(x:float,
         elif ((int(2*(t+x))%2 == 0) and horizontal) or ((int(2*(t+x))%2 != 0) and not horizontal):
             for _ in range(l):
                 a = np.einsum('ab,b->a',direct,a)
-            return np.einsum('a,a->',b,a)
+            return a[1]
 
         else:
             for _ in range(l-1):
                 a = np.einsum('ab,b->a',direct,a)
             a = np.einsum('ab,b->a',defect,a)
-            return np.einsum('a,a->',b,a)
+            return a[1]
 
     def skeleton(h:np.ndarray,
                  v:np.ndarray,
@@ -156,34 +161,30 @@ def path_integral(x:float,
             input skeleton diagram, only for cases where y is an integer!
         '''
 
-        if v == []:
-            return transfer_matrix(a,h[-1],terminate=True)
-        
-        elif len(v) == len(h):
+        if len(v) == len(h):
             for i in range(len(v)-1):
                 a = transfer_matrix(a,h[i])
                 a = transfer_matrix(a,v[i],horizontal=False)
             a = transfer_matrix(a,h[-1])
+            return transfer_matrix(a,v[-1],terminate=True,horizontal=False)
 
         else:
             for i in range(len(v)):
                 a = transfer_matrix(a,h[i])
                 a = transfer_matrix(a,v[i],horizontal=False)
+            return transfer_matrix(a,h[-1],terminate=True) 
 
-        return transfer_matrix(a,h[-1],terminate=True) if len(h) > len(v) else transfer_matrix(a,v[-1],terminate=True,horizontal=False)
-
-    a, b = np.array([0,1,0,0],dtype='complex_'), np.array([0,1,0,0],dtype='complex_')
+    a = np.array([0,1,0,0],dtype='complex_')
 
     if x == 0 and t == 0.:
-        return np.einsum('a,a->',a,b)
+        return a[1]
 
     vertical_data = {}
     horizontal_data = {}
 
     x_h, x_v = math.ceil(t+x), math.floor(t+1-x)
 
-    if not k:
-        k = min(x_h,x_v)
+    k = min(x_h,x_v,k)
 
     list_generator(x_v-1,vertical_data,k=k)
     list_generator(x_h,horizontal_data,k=k+1)
@@ -206,20 +207,21 @@ def path_integral(x:float,
                 for v in l2:
                     sum += skeleton(h,v,a)
         except:pass
-
-        if n == 1:          
-            try:
-                l1, v = horizontal_data[n], vertical_data[0]
-                for h in l1:
-                    sum += skeleton(h,[],a)
-            except:pass
+         
+        try:
+            l1, v = horizontal_data[n], vertical_data[0]
+            for h in l1:
+                sum += skeleton(h,[],a)
+        except:pass
 
         n += 1
 
     return sum
 
-def list_generator(x:int,data:dict,k:int=np.inf,
-                    lists:np.ndarray=[]):
+def list_generator(x:int,
+                   data:dict,
+                   k:int=np.inf,
+                   lists:np.ndarray=[]):
     '''
         Generates a complete set of possible lists which can
         combine to form a complete set 

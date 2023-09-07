@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
-matrix = np.loadtxt('data/PathIntegralTruncated/2_3806443768_1e-07.csv',delimiter=',',dtype='complex_',skiprows=1)
+matrix = np.loadtxt('data/PathIntegralTruncated/2_4146150358_1e-07.csv',delimiter=',',dtype='complex_',skiprows=1)
 matrix = np.abs(matrix[::2,::2])
 
 t = [float(i) for i in range(0,matrix.shape[0])]
