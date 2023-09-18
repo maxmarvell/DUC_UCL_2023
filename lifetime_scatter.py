@@ -59,7 +59,7 @@ def main():
     plt.rcParams["font.family"] = "Times New Roman"
     plt.xlabel("$\epsilon$", size=14, fontname="Times New Roman", labelpad=10)
     plt.ylabel("T$_{sol}$" ,size=14, fontname="Times New Roman", labelpad=10)
-    plt.title("Mean Lifetime of Soliton vs. Perturbation Strength", fontweight ='bold',size=14, fontname="Times New Roman")
+    plt.title("Half Life of Soliton vs. Perturbation Strength", fontweight ='bold',size=14, fontname="Times New Roman")
     ax.minorticks_on()
     major_ticks = np.arange(range[0],range[-1],(range[-1]-range[0])*2/len(range))
     minor_ticks = np.arange(range[0],range[-1],(range[-1]-range[0])/(4*len(range)))
@@ -116,7 +116,7 @@ def get_T(path):
         soliton.append((np.abs(canvas)**2)[t,x]) 
 
     T, Tstd = exp_fit(time, soliton)
-    return T, Tstd
+    return T*np.log(2), Tstd*np.log(2)
 
 
 

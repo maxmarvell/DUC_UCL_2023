@@ -52,8 +52,8 @@ def main():
     plt.ylabel("T$_{therm}$" ,size=14, fontname="Times New Roman", labelpad=10)
     plt.title("Thermalization Time vs. Perturbation Strength", fontweight ='bold',size=14, fontname="Times New Roman")
     ax.minorticks_on()
-    major_ticks = np.arange(range[0],range[-1],(range[-1]-range[0])*2/len(range))
-    minor_ticks = np.arange(range[0],range[-1],(range[-1]-range[0])/(4*len(range)))
+    major_ticks = np.arange(5.0,15.0,1.0)
+    minor_ticks = np.arange(5.0,15.0,0.1)
     ax.set_xticks(major_ticks)
     ax.set_xticks(minor_ticks, minor=True)
     ax.grid(which='minor', linewidth=0.5, alpha=0.5)
@@ -106,15 +106,22 @@ def get_p(path):
 
     canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
     dim_t, dim_x = np.shape(canvas)
+    T = float((dim_t-1))/2
     t = 0
     R2 = 1.0
 
     while R2 >= 0.99:
         try:
             cross_section = list(np.abs(canvas[t-1,:])**2)
-            space = list((np.array(range(len(cross_section)))  + 1 - (len(cross_section)/2))/2)
-            cross_section = cross_section[::2]
-            space = space[::2]
+            space = np.arange(-(T-0.5),(T+0.5),0.5)
+            #on half integer lattice rn
+            if (dim_t%2 != 0):
+                offset = int((1+((dim_t+t)%2))%2)
+            else:
+                offset = int((dim_t+t)%2)
+
+            cross_section = cross_section[offset::2]
+            space = space[offset::2]
             R2, width = fit(space, cross_section)
             if not R2 >= 0.99:
                 break 

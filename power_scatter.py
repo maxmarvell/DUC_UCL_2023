@@ -60,20 +60,20 @@ def main():
     plt.ylabel("p" ,size=14, fontname="Times New Roman", labelpad=10)
     plt.title("Exponent from Power Law Fit of $\sigma$(t) vs. Perturbation Strength", fontweight ='bold',size=14, fontname="Times New Roman")
     ax.minorticks_on()
-    major_ticks = np.arange(range[0],range[-1],(range[-1]-range[0])/len(range))
-    minor_ticks = np.arange(range[0],range[-1],(range[-1]-range[0])/(4*len(range)))
+    major_ticks = np.arange(5.0,15.0,1.0)
+    minor_ticks = np.arange(5.0,15.0,0.1)
     ax.set_xticks(major_ticks)
     ax.set_xticks(minor_ticks, minor=True)
     ax.grid(which='minor', linewidth=0.5, alpha=0.5)
 
-    plt.errorbar(range,p1,yerr=p1err,marker="d",color='k',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.3,capsize=1.0,label="1st seed")
-    plt.errorbar(range,p2,yerr=p2err,marker="d",color='r',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.3,capsize=1.0,label="2nd seed")
-    plt.errorbar(range,p3,yerr=p3err,marker="d",color='g',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.3,capsize=1.0,label="3rd seed")
-    plt.errorbar(range,p4,yerr=p4err,marker="d",color='m',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.3,capsize=1.0,label="4th seed")
-    plt.errorbar(range,p5,yerr=p5err,marker="d",color='c',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.3,capsize=1.0,label="5th seed")
-    plt.errorbar(range,p6,yerr=p6err,marker="d",color='b',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.3,capsize=1.0,label="6th seed")
+    plt.errorbar(range,p1,yerr=p1err,marker="d",color='k',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.5,capsize=2.0,label="1st seed")
+    plt.errorbar(range,p2,yerr=p2err,marker="d",color='r',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.5,capsize=2.0,label="2nd seed")
+    plt.errorbar(range,p3,yerr=p3err,marker="d",color='g',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.5,capsize=2.0,label="3rd seed")
+    plt.errorbar(range,p4,yerr=p4err,marker="d",color='m',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.5,capsize=2.0,label="4th seed")
+    plt.errorbar(range,p5,yerr=p5err,marker="d",color='c',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.5,capsize=2.0,label="5th seed")
+    plt.errorbar(range,p6,yerr=p6err,marker="d",color='b',ms=2,linewidth=0.2,linestyle="dashed",elinewidth=0.5,capsize=2.0,label="6th seed")
     
-    plt.plot(range,avg,marker="v",color='k',ms=5,linewidth=0.3,linestyle="dashed",label="Haar Average")
+    plt.plot(range,avg,marker="v",color='k',ms=7,linewidth=0.3,linestyle="dashed",label="Average")
     plt.fill_between(range,np.array(avg)-np.array(std),np.array(avg)+np.array(std),color='k',alpha=0.1,linewidth=0.3)
 
     plt.grid()
@@ -133,6 +133,7 @@ def get_p(path):
 
     canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
     dim_t, dim_x = np.shape(canvas)
+    T = float((dim_t-1))/2
     time = []
     widths = []
     t = -1
@@ -141,9 +142,15 @@ def get_p(path):
     while R2 >= 0.99:
         try:
             cross_section = list(np.abs(canvas[t,:])**2)
-            space = list((np.array(range(len(cross_section)))  + 1 - (len(cross_section)/2))/2)
-            cross_section = cross_section[::2]
-            space = space[::2]
+            space = np.arange(-(T-0.5),(T+0.5),0.5)
+            #on even lattice rn
+            if (dim_t%2 != 0):
+                offset = int((1+((dim_t+t)%2))%2)
+            else:
+                offset = int((dim_t+t)%2)
+
+            cross_section = cross_section[offset::2]
+            space = space[offset::2]
             R2, width = fit(space, cross_section)
             if not R2 >= 0.99:
                 break 

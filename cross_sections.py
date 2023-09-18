@@ -4,6 +4,7 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 
 
+
 def fit(space, cross_section):
 
     def Gaussian(x,a,b,c):
@@ -23,51 +24,61 @@ def fit(space, cross_section):
     return dense_inputs, fit_data, R2, opt_pars[2]
 
 
-#plt.imshow(np.abs(canvas),cmap='hot', interpolation='nearest')
-#plt.show()
+
+
+path = "./Larders/Larder_5/T24.0_d3_e7"
+canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
+T = 23.5
+space = np.arange(-(T-0.5),(T+0.5),0.5)
+
 
 fig, ax = plt.subplots()
 plt.rcParams["font.family"] = "Times New Roman"
 plt.xlabel("x", size=14, fontname="Times New Roman", labelpad=10)
 plt.ylabel("|<Z$_x$|Z(t)>|$^2$" ,size=14, fontname="Times New Roman", labelpad=10)
 plt.title("Spatial Distribution of Weight of Z(t) over Local Operators Z$_x$", fontweight ='bold',size=14, fontname="Times New Roman")
-
-path = "./Larders/Larder_5/T24.0_d3_e7"
-canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
-dim_t, dim_x = np.shape(canvas)
-space = list((np.array(range(dim_x))  + 1 - (dim_x/2))/2)
-
+#plt.text(13.0,0.005,"Integer Lattice", size=12)
 ax.minorticks_on()
-major_ticks = np.arange(space[0],space[-1],2)
-minor_ticks = np.arange(space[0],space[-1],0.5)
+major_ticks = np.arange(space[0],space[-1]+0.5,4)
+minor_ticks = np.arange(space[0],space[-1]+0.5,0.5)
 ax.set_xticks(major_ticks)
 ax.set_xticks(minor_ticks, minor=True)
 ax.grid(which='minor', linewidth=0.5, alpha=0.5)
 
-bools = [False, False, False, False, False, False, False, False, False, False, False]
-colours = ['b','c','g','r','m','k','k','k','k','k','k']
-times = [8,10,12,14,16,18,20,22,24,26,28]
 
+bools = [True, True, True, True, True, True]
+colours = ['r','m','b','g','c','k']
+times = [6.0,6.5,8.0,12.0,23.5]
+parity = "odd"
+print(list(np.flip(np.abs(canvas[0,:])**2)).index(1.0))
+print(len(space))
 
-for i in range(11):
-    cross_section = list(np.abs(canvas[times[i],:])**2)
-    space_even = space[1::2]
-    space_odd = space[::2]
-    cross_section_even = cross_section[1::2]
-    cross_section_odd = cross_section[::2]
+for i in range(5):
 
-    plt.scatter(space_even, cross_section_even, marker="d", color='k', s=5)
+    if parity == "even":
+        if (int(2*T)%2 == 0):
+            offset = int((1+((2*times[i])%2))%2)
+        else:
+            offset = int((2*times[i])%2)
+    else:
+        if (int(2*T)%2 == 0):
+            offset = int((2*times[i])%2)
+        else:
+            offset = int((1+((2*times[i])%2))%2)
+           
+    space = np.arange(-(T-0.5),(T+0.5),0.5)
+    cross_section = list(np.flip(np.abs(canvas[int(2*times[i]),:])**2))
+    space = space[offset::2]
+    cross_section = cross_section[offset::2]
+
 
     if bools[i]:
-        dense_inputs_even, fit_data_even, R2_even, width_even = fit(space_even, cross_section_even)
-        dense_inputs_odd, fit_data_odd, R2_odd, width_odd = fit(space_odd, cross_section_odd)
-        plt.plot(dense_inputs_even, fit_data_even, color=colours[i], linewidth=1.2, label=f"t = {float(times[i])/2}")
-        #plt.plot(dense_inputs_odd, fit_data_odd, color=colours[i], linewidth=0.5, linestyle='dashed')
-        print(R2_even)
+        dense_inputs, fit_data, R2, width = fit(space, cross_section)
+        plt.plot(dense_inputs, fit_data, color=colours[i],linewidth=0.5,label=f"t = {times[i]}")
     else:
-        plt.plot(space_even, cross_section_even, color=colours[i], linewidth=1.2, label=f"t = {float(times[i])/2}")
-        #plt.plot(space_odd, cross_section_odd, color=colours[i], linewidth=0.5, linestyle='dashed')
+        plt.plot(space, cross_section, color=colours[i],linewidth=0.5,label=f"t = {times[i]}")
 
+    plt.scatter(space, cross_section, marker="d", color='k', s=4)
 
 plt.grid()
 plt.legend(fontsize=12)

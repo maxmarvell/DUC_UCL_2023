@@ -4,12 +4,10 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 
 
-path = "./Larders/Larder_6/T24.0_d3_e11"
+path = "./Larders/Larder_5/T24.0_d3_e7"
 canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
-print(np.shape(canvas))
 dim_t, dim_x = np.shape(canvas)
-T = 24.0
-e = 0.0000001
+T = 23.5
 time = []
 widths = []
 plt.imshow(np.abs(canvas),cmap='hot', interpolation='nearest')
@@ -37,47 +35,46 @@ def fit(space, cross_section):
 
 
 
-space = list((np.array(range(dim_x))  + 1 - (dim_x/2))/2)
-space = space[::2]
+
+
 fig, ax = plt.subplots()
 plt.rcParams["font.family"] = "Times New Roman"
 plt.xlabel("x", size=14, fontname="Times New Roman", labelpad=10)
 plt.ylabel("|<Z$_x$|Z(t)>|$^2$" ,size=14, fontname="Times New Roman", labelpad=10)
-plt.title(f"Spatial Distribution of Weight of Z(t) over Local Operators Z$_x$ \n $\epsilon$ = {e}", fontweight ='bold',size=14, fontname="Times New Roman")
+plt.title(f"Diffusion of Central Gaussian Lump at Late Times", fontweight ='bold',size=14, fontname="Times New Roman")
 
-'''''
-t = -45
-
-cross_section = list(np.abs(canvas[t,:]))
-cross_section = cross_section[::2]
-dense_inputs, fit_data, R2, width = fit(space, cross_section)
-time.append((dim_t+t)/2)
-widths.append(width)
-plt.scatter(space, cross_section, marker="d", color='k', s=5)
-plt.plot(dense_inputs, fit_data, color='r', linewidth=0.3, linestyle='dashed', label=f"t = {T + 1 + t/2}")
-print(R2)
-
-'''''
 t = -1
 R2 = 1.0
 while R2 >= 0.99:
         try:
+            space = np.arange(-(T-0.5),(T+0.5),0.5) 
+            if (dim_t%2 == 0):
+                    offset = int((1+((dim_t+t)%2))%2)
+            else:
+                offset = int((dim_t+t)%2)
             cross_section = list(np.abs(canvas[t,:])**2)
-            cross_section = cross_section[::2]
+            space = space[offset::2]
+            cross_section = cross_section[offset::2]
             dense_inputs, fit_data, R2, width = fit(space, cross_section)
             if not R2 >= 0.99:
                 break
             time.append((dim_t+t)/2)
             widths.append(width)
-            plt.scatter(space, cross_section, marker="d", color='k', s=5)
-            plt.plot(dense_inputs, fit_data, color='r', linewidth=0.3, linestyle='dashed', label=f"t = {T + (1+t)/2}")
-            t -= 2           
+            if t == -1:
+                plt.scatter(space, cross_section, marker="d", color='k', s=5)
+                plt.plot(dense_inputs, fit_data, color='b', linewidth=0.6, label=f"t = {T}")
+            else:     
+                plt.scatter(space, cross_section, marker="d", color='k', s=5)
+                plt.plot(dense_inputs, fit_data, color='r', linewidth=0.3, linestyle='dashed')
+            t -= 1          
         except:
             break
 
+plt.scatter(space, cross_section, marker="d", color='k', s=5)
+plt.plot(dense_inputs, fit_data, color='g', linewidth=0.6, label=f"t = {float(dim_t+t)/2}")
 
 ax.minorticks_on()
-major_ticks = np.arange(space[0],space[-1],2)
+major_ticks = np.arange(space[0],space[-1],3)
 minor_ticks = np.arange(space[0],space[-1],0.25)
 ax.set_xticks(major_ticks)
 ax.set_xticks(minor_ticks, minor=True)
