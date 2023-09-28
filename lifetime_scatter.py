@@ -15,12 +15,12 @@ def main():
     
     for e in range:
 
-        path1 = f"./Larders/Larder_1/T24.0_d3_e{e}"
-        path2 = f"./Larders/Larder_2/T24.0_d3_e{e}"
-        path3 = f"./Larders/Larder_3/T24.0_d3_e{e}"
-        path4 = f"./Larders/Larder_4/T24.0_d3_e{e}"
-        path5 = f"./Larders/Larder_5/T24.0_d3_e{e}"
-        path6 = f"./Larders/Larder_6/T24.0_d3_e{e}"
+        path1 = f"./Larders/Larder_0/T24.0_d3_e{e}"
+        path2 = f"./Larders/Larder_1/T24.0_d3_e{e}"
+        path3 = f"./Larders/Larder_2/T24.0_d3_e{e}"
+        path4 = f"./Larders/Larder_3/T24.0_d3_e{e}"
+        path5 = f"./Larders/Larder_4/T24.0_d3_e{e}"
+        path6 = f"./Larders/Larder_5/T24.0_d3_e{e}"
 
         T, Tstd = get_T(path1)
         T1.append(T)
@@ -105,7 +105,7 @@ def exp_fit(time, weights):
 
 def get_T(path):
 
-    canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
+    canvas = np.loadtxt(path,delimiter=',')
     dim_t, dim_x = np.shape(canvas)
     T = 24.0
     soliton = []
@@ -113,7 +113,7 @@ def get_T(path):
 
     for t in range(int(2*T)):
         x = int(2*T)-t-1
-        soliton.append((np.abs(canvas)**2)[t,x]) 
+        soliton.append((canvas[t,x])) 
 
     T, Tstd = exp_fit(time, soliton)
     return T*np.log(2), Tstd*np.log(2)

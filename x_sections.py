@@ -4,13 +4,13 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 
 
-path = "./Larders/Larder_5/T24.0_d3_e7"
-canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
+path = "./Larders/Larder_3/T24.0_d3_e12"
+canvas = np.loadtxt(path,delimiter=',')
 dim_t, dim_x = np.shape(canvas)
 T = 23.5
 time = []
 widths = []
-plt.imshow(np.abs(canvas),cmap='hot', interpolation='nearest')
+plt.imshow(canvas,cmap='hot', interpolation='nearest')
 plt.show()
 
 
@@ -40,7 +40,7 @@ def fit(space, cross_section):
 fig, ax = plt.subplots()
 plt.rcParams["font.family"] = "Times New Roman"
 plt.xlabel("x", size=14, fontname="Times New Roman", labelpad=10)
-plt.ylabel("|<Z$_x$|Z(t)>|$^2$" ,size=14, fontname="Times New Roman", labelpad=10)
+plt.ylabel("<Z$_x$|Z(t)>" ,size=14, fontname="Times New Roman", labelpad=10)
 plt.title(f"Diffusion of Central Gaussian Lump at Late Times", fontweight ='bold',size=14, fontname="Times New Roman")
 
 t = -1
@@ -52,7 +52,7 @@ while R2 >= 0.99:
                     offset = int((1+((dim_t+t)%2))%2)
             else:
                 offset = int((dim_t+t)%2)
-            cross_section = list(np.abs(canvas[t,:])**2)
+            cross_section = list(canvas[t,:])
             space = space[offset::2]
             cross_section = cross_section[offset::2]
             dense_inputs, fit_data, R2, width = fit(space, cross_section)

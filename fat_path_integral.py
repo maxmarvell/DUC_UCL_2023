@@ -10,12 +10,14 @@ def main():
     T = 24.0
     q = 2
 
+    
     range = [5,5.5,6,6.5,7,
              7.5,8,8.5,9,9.5,
              10,10.5,11,11.5,12,
-             12.5,13,13.5,14,14.5]
+              12.5,13,13.5,14,14.5]
 
-    for i in [4,5,6]:
+
+    for i in [0,1,2,3,4,5]:
         for e in range:
             Tile_dir = f"./Tile_Zoo_{i}/Tile_Zoo_{i}_e{e}"
             canvas = path_integral(T,d,q,Tile_dir)
@@ -193,14 +195,14 @@ def path_integral(T:float, d:int, q:int, Tile_dir:str):
 
 
 
-    canvas = np.full(shape=[int(2*T), int(4*T)-2], fill_value=0, dtype="complex_")
+    canvas = np.full(shape=[int(2*T), int(4*T)-2], fill_value=0.0)
     canvas[0,int(2*T)-1] = 1.0
 
     Tile_Zoo = dict()
-    Tile_Zoo["Main h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{d}x{d}",delimiter=',',dtype='complex_')
-    Tile_Zoo["Main h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{d}x{d}",delimiter=',',dtype='complex_')
-    Tile_Zoo["Main v_direct"] = np.loadtxt(f"{Tile_dir}/v_direct_{d}x{d}",delimiter=',',dtype='complex_')
-    Tile_Zoo["Main v_defect"] = np.loadtxt(f"{Tile_dir}/v_defect_{d}x{d}",delimiter=',',dtype='complex_')
+    Tile_Zoo["Main h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{d}x{d}",delimiter=',')
+    Tile_Zoo["Main h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{d}x{d}",delimiter=',')
+    Tile_Zoo["Main v_direct"] = np.loadtxt(f"{Tile_dir}/v_direct_{d}x{d}",delimiter=',')
+    Tile_Zoo["Main v_defect"] = np.loadtxt(f"{Tile_dir}/v_defect_{d}x{d}",delimiter=',')
 
 
     for t in range(1, int(2*T)):
@@ -213,10 +215,10 @@ def path_integral(T:float, d:int, q:int, Tile_dir:str):
             k = min(dim_h, dim_v)
 
             if (dim_v%d) != 0:
-                Tile_Zoo["Low Trim h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{d}x{dim_v%d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Low Trim h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{d}x{dim_v%d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Low Trim v_direct"] = np.loadtxt(f"{Tile_dir}/v_direct_{d}x{dim_v%d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Low Trim v_defect"] = np.loadtxt(f"{Tile_dir}/v_defect_{d}x{dim_v%d}",delimiter=',',dtype='complex_')
+                Tile_Zoo["Low Trim h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{d}x{dim_v%d}",delimiter=',')
+                Tile_Zoo["Low Trim h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{d}x{dim_v%d}",delimiter=',')
+                Tile_Zoo["Low Trim v_direct"] = np.loadtxt(f"{Tile_dir}/v_direct_{d}x{dim_v%d}",delimiter=',')
+                Tile_Zoo["Low Trim v_defect"] = np.loadtxt(f"{Tile_dir}/v_defect_{d}x{dim_v%d}",delimiter=',')
                 a = np.zeros(q**(2*(dim_v%d)))
                 a[q**(2*(dim_v%d - 1))] = 1.0
                 list_generator((dim_v//d + 1)-1,vertical_data)
@@ -227,18 +229,18 @@ def path_integral(T:float, d:int, q:int, Tile_dir:str):
             
 
             if (dim_h%d) != 0:
-                Tile_Zoo["Left Trim h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Left Trim h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Left Trim v_direct"] = np.loadtxt(f"{Tile_dir}/v_direct_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Left Trim v_defect"] = np.loadtxt(f"{Tile_dir}/v_defect_{dim_h%d}x{d}",delimiter=',',dtype='complex_')
+                Tile_Zoo["Left Trim h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{dim_h%d}x{d}",delimiter=',')
+                Tile_Zoo["Left Trim h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{dim_h%d}x{d}",delimiter=',')
+                Tile_Zoo["Left Trim v_direct"] = np.loadtxt(f"{Tile_dir}/v_direct_{dim_h%d}x{d}",delimiter=',')
+                Tile_Zoo["Left Trim v_defect"] = np.loadtxt(f"{Tile_dir}/v_defect_{dim_h%d}x{d}",delimiter=',')
                 list_generator((dim_h//d + 1),horizontal_data,k=k)
             else:
                 list_generator((dim_h//d),horizontal_data,k=k)
 
 
             if (dim_v%d) != 0 and (dim_h%d) != 0:
-                Tile_Zoo["Corner h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{dim_h%d}x{dim_v%d}",delimiter=',',dtype='complex_')
-                Tile_Zoo["Corner h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{dim_h%d}x{dim_v%d}",delimiter=',',dtype='complex_')
+                Tile_Zoo["Corner h_direct"] = np.loadtxt(f"{Tile_dir}/h_direct_{dim_h%d}x{dim_v%d}",delimiter=',')
+                Tile_Zoo["Corner h_defect"] = np.loadtxt(f"{Tile_dir}/h_defect_{dim_h%d}x{dim_v%d}",delimiter=',')
 
 
 

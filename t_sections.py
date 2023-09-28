@@ -4,8 +4,8 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 
 
-path = "./Larders/Larder_5/T24.0_d3_e7"
-canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
+path = "./Larders/Larder_0/T24.0_d3_e5"
+canvas = np.loadtxt(path,delimiter=',')
 print(np.shape(canvas))
 dim_t, dim_x = np.shape(canvas)
 T = float((dim_t-1))/2
@@ -39,7 +39,7 @@ t = -1
 R2 = 1.0
 while R2 >= 0.99:
     try:
-        cross_section = list(np.abs(canvas[t,:])**2)
+        cross_section = list(canvas[t,:])
         space = np.arange(-(T-0.5),(T+0.5),0.5)
         if (dim_t%2 == 0):
             offset = int((1+((dim_t+t)%2))%2)

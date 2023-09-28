@@ -14,12 +14,12 @@ def main():
 
     for e in range:
 
-        path1 = f"./Larders/Larder_1/T24.0_d3_e{e}"
-        path2 = f"./Larders/Larder_2/T24.0_d3_e{e}"
-        path3 = f"./Larders/Larder_3/T24.0_d3_e{e}"
-        path4 = f"./Larders/Larder_4/T24.0_d3_e{e}"
-        path5 = f"./Larders/Larder_5/T24.0_d3_e{e}"
-        path6 = f"./Larders/Larder_6/T24.0_d3_e{e}"
+        path1 = f"./Larders/Larder_0/T24.0_d3_e{e}"
+        path2 = f"./Larders/Larder_1/T24.0_d3_e{e}"
+        path3 = f"./Larders/Larder_2/T24.0_d3_e{e}"
+        path4 = f"./Larders/Larder_3/T24.0_d3_e{e}"
+        path5 = f"./Larders/Larder_4/T24.0_d3_e{e}"
+        path6 = f"./Larders/Larder_5/T24.0_d3_e{e}"
 
         T = get_p(path1)
         t1.append(T)
@@ -104,7 +104,7 @@ def fit(space, cross_section):
 
 def get_p(path):
 
-    canvas = np.loadtxt(path,delimiter=',',dtype='complex_')
+    canvas = np.loadtxt(path,delimiter=',')
     dim_t, dim_x = np.shape(canvas)
     T = float((dim_t-1))/2
     t = 0
@@ -112,7 +112,7 @@ def get_p(path):
 
     while R2 >= 0.99:
         try:
-            cross_section = list(np.abs(canvas[t-1,:])**2)
+            cross_section = list(canvas[t-1,:])
             space = np.arange(-(T-0.5),(T+0.5),0.5)
             #on half integer lattice rn
             if (dim_t%2 != 0):
