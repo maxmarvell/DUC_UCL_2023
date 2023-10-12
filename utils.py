@@ -2,6 +2,9 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 from scipy.linalg import expm 
 import numpy as np
+import pandas as pd
+import re
+import os
 
 def list_generator(x:int,
                    data:dict,
@@ -49,3 +52,80 @@ def fit(space, cross_section):
     R2 = r2_score(cross_section, G(space))
 
     return dense_inputs, fit_data, R2, opt_pars[2]
+
+def random_circuit(tspan:int,
+                   gates:np.ndarray,
+                   temp:float):
+    
+    circuit = pd.DataFrame()
+
+    for T in range(2*tspan):
+
+        t = float(T)/2
+
+        row = np.array([])
+        inds = np.array([])
+
+        for x in range(-T,T+1,2):
+            x = float(x)/2
+            inds = np.append(inds,x)
+            inds = np.append(inds,x+0.5)
+            gate = distribute(gates,temp)
+            row = np.append(row,gate)
+            row = np.append(row,gate)
+
+        floquet = pd.Series(row,inds,name=t)
+
+        circuit = pd.concat([circuit, floquet.to_frame().T])
+
+    return circuit
+
+def distribute(gates:np.ndarray,
+               temp:float):
+
+    def thermal(x:float):
+        return np.exp(-x/temp)
+    
+    x = np.linspace(0,1,len(gates)+1)
+
+    p = thermal(x[:-1]) - thermal(x[1:])
+
+    p /= np.sum(p)
+
+    return np.random.choice(gates,p=p)
+        
+def get_gates(q:int,
+              e:float,
+              pure:bool = False):
+
+    PW, gates = dict(), list()
+
+    rstr = f'DU_{q}' + r'_([0-9]*).csv'
+    rx = re.compile(rstr)
+
+    for _, _, files in os.walk('data/FoldedTensors'):
+        for file in files:
+
+            res = rx.match(file)
+
+            if not res: continue
+
+            seed = int(res.group(1))
+
+            gates.append(seed)
+    
+            W = np.loadtxt(f'data/FoldedTensors/DU_{q}_{seed}.csv',
+                           delimiter=',',dtype='complex_')
+            
+            if pure: 
+                PW[seed] = W.reshape(q**2,q**2,q**2,q**2)
+                continue
+
+            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
+                           delimiter=',',dtype='complex_')
+            
+            G = Exponential_Map(e,P)
+
+            PW[seed] = np.einsum('ab,bc->ac',G,W).reshape(q**2,q**2,q**2,q**2)
+            
+    return PW, gates

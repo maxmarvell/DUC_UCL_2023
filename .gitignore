@@ -1,6 +1,8 @@
 generate_data.py
+generate_data_QUIMB.py
 generate_tensors.py
 plot_data.py
+light_cone_correlation.py
 .DS_Store
 data/
 graphs/
