@@ -1,30 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-from sklearn.metrics import r2_score
-
-
-
-def fit(space, cross_section):
-
-    def Gaussian(x,a,b,c):
-        return a*np.exp(-((x-b)**2)/(2*c**2))
-
-    def partial_gauss(a,b,c): 
-        def P(x): return Gaussian(x,a,b,c)
-        return P
-
-    dense_inputs = np.linspace(space[0],space[-1],100)
-    opt_pars, cov_pars = curve_fit(Gaussian, xdata=space, ydata=cross_section)
-    G = np.vectorize(partial_gauss(opt_pars[0],opt_pars[1],opt_pars[2]))
-    fit_data = G(dense_inputs)
-
-    R2 = r2_score(cross_section, G(space))
-
-    return dense_inputs, fit_data, R2, opt_pars[2]
-
-
-
+from utils import fit
 
 path = "./Larders/Larder_5/T24.0_d3_e7"
 canvas = np.loadtxt(path,delimiter=',',dtype='complex_')

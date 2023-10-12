@@ -15,7 +15,7 @@ def main():
     k = 3
 
     for e in pertubations:
-        generate_data(q,tspan,e,k=)
+        generate_data(q,tspan,e,k=k)
 
 class Node:
     def __init__(self,data:complex=None):
