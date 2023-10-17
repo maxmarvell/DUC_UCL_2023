@@ -3,6 +3,11 @@ import numpy as np
 import pandas as pd
 import math
 
+'''
+    Code developed to compute two-point correlation function in sub-complete contraction 
+    time.
+'''
+
 def PATH(x:float,
                   t:float,
                   W:np.ndarray,
