@@ -8,4 +8,4 @@ To quantify the effect of a uniform pertubation on the frameworks ability to pro
 
 ### The Code
 
-
+Prior to computing any infinite temperature correlations, we require a peterbed dual-unitary framework with which we can can evolve our orgin charge. This requires a) A dual unitary matrix, $U$ of dimension $\mathcal{R}^{2\times2}$ and b) A peturbing matrix, $P$, to apply to $U$. Both of these are given in the files DU_generator.py and P_generator.py.
