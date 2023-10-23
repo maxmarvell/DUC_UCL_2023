@@ -1,34 +1,7 @@
-from path_integral import list_generator
+from utils import *
 import numpy as np
 import pandas as pd
-import math
-
-class Node:
-    def __init__(self,data:complex=None):
-        self.left = None
-        self.right = None
-        self.data = data
-
-class Tree:
-    def __init__(self,root=Node()):
-        self.root = root
-        self.current = self.root
-
-    def move_left(self):
-        if not self.current.left:
-            self.current.left = Node()
-        self.current = self.current.left
-
-    def move_right(self):
-        if not self.current.right:
-            self.current.right = Node()
-        self.current = self.current.right
-    
-    def assign_data(self,data:complex):
-        self.current.data = data
-
-    def return_root(self):
-        self.current = self.root     
+import math   
 
 def PATH(x:float,
          t:float,

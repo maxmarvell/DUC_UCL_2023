@@ -20,6 +20,14 @@ Thermalize_scatter.py
 x_sections.py
 .DS_Store
 .gitignore
-data/
 graphs/
+PathIntegral/
+PathIntegralThick/
+TreePathIntegralThick/
+PathIntegralTree/
+RandomPathIntegral/
+RandomPathIntegralTree/
+RandomTensorExact/
+TensorExact/
+TileZoo/
 __pycache__/

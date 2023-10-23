@@ -1,4 +1,4 @@
-from P_generator import Exponential_Map
+from utils import Exponential_Map
 import quimb.tensor as qtn
 import numpy as np
 import os
@@ -6,24 +6,27 @@ import os
 def main():
 
     q = 2
-    e = 0.0000004
+    e = 7e-8
     d = 5
     
-    W = np.loadtxt('data/FoldedTensors/DU_2_3806443768.csv',
+    W = np.loadtxt('data/FoldedTensors/DU_2_308577440.csv',
                    delimiter=',',
                    dtype='complex_')
     
-    G = np.loadtxt('data/FoldedPertubations/P_2_866021931.csv',
+    G = np.loadtxt('data/FoldedPertubations/P_2_308577440.csv',
                    delimiter=',',
                    dtype='complex_')
     
     P = Exponential_Map(e,G)
     PW = np.einsum('ab,bc->ac',P,W).reshape([q**2,q**2,q**2,q**2])
 
-    get_tiles(PW, d)
+    get_tiles(PW, d, q, 308577440, e)
 
 def get_tiles(W:np.ndarray,
-              d:int):
+              d:int,
+              q,
+              seed,
+              e):
 
     '''
         gets the four types of tiles corresponding to horizontal defect,
@@ -68,10 +71,10 @@ def get_tiles(W:np.ndarray,
                 h_direct = h_direct.reshape(*h_direct.shape[:1],-1)
 
                 try:
-                    np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+                    np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
                 except:
-                    os.mkdir('data/TileZoo')
-                    np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+                    os.mkdir(f'data/TileZoo/{q}_{seed}_{e}')
+                    np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
 
             else:
                 h_direct = W[0,:,:,0]
@@ -80,10 +83,10 @@ def get_tiles(W:np.ndarray,
                     h_direct = np.einsum('ab,bc->ac',h_direct,W[0,:,:,0])
 
                 try:
-                    np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+                    np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
                 except:
-                    os.mkdir('data/TileZoo')
-                    np.savetxt(f'data/TileZoo/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
+                    os.mkdir(f'data/TileZoo/{q}_{seed}_{e}')
+                    np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/h_direct_{d_h}x{d_v}.csv',h_direct,delimiter=',')
 
 
     # HORIZONTAL DEFECT TILE
@@ -119,10 +122,10 @@ def get_tiles(W:np.ndarray,
                 h_defect = h_defect.reshape(-1,*h_defect.shape[-d_v:])
                 h_defect = h_defect.reshape(*h_defect.shape[:1],-1)
 
-                np.savetxt(f'data/TileZoo/h_defect_{d_h}x{d_v}.csv',h_defect,delimiter=',')
+                np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/h_defect_{d_h}x{d_v}.csv',h_defect,delimiter=',')
 
             else:
-                np.savetxt(f'data/TileZoo/h_defect_{d_h}x{d_v}.csv', W[:,0,:,0],delimiter=',')
+                np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/h_defect_{d_h}x{d_v}.csv', W[:,0,:,0],delimiter=',')
 
     ### VERTICAL DIRECT TILE
 
@@ -153,13 +156,13 @@ def get_tiles(W:np.ndarray,
                 v_direct = v_direct.reshape(-1,*v_direct.shape[-d_h:])
                 v_direct = v_direct.reshape(*v_direct.shape[:1],-1)
 
-                np.savetxt(f'data/TileZoo/v_direct_{d_h}x{d_v}.csv',v_direct,delimiter=',')
+                np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/v_direct_{d_h}x{d_v}.csv',v_direct,delimiter=',')
 
             else:
                 v_direct = W[:,0,0,:]
                 for i in range(d_v-1):
                     v_direct = np.einsum('ab,bc->ac',v_direct,W[:,0,0,:])
-                np.savetxt(f'data/TileZoo/v_direct_{d_h}x{d_v}.csv',v_direct,delimiter=',')
+                np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/v_direct_{d_h}x{d_v}.csv',v_direct,delimiter=',')
 
     ### VERTICAL DEFECT TILE
 
@@ -194,10 +197,10 @@ def get_tiles(W:np.ndarray,
                 v_defect = v_defect.reshape(-1,*v_defect.shape[-d_h:])
                 v_defect = v_defect.reshape(*v_defect.shape[:1],-1)
 
-                np.savetxt(f'data/TileZoo/v_defect_{d_h}x{d_v}.csv',v_defect,delimiter=',')
+                np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/v_defect_{d_h}x{d_v}.csv',v_defect,delimiter=',')
 
             else:
-                np.savetxt(f'data/TileZoo/v_defect_{d_h}x{d_v}.csv',W[0,:,0,:],delimiter=',')
+                np.savetxt(f'data/TileZoo/{q}_{seed}_{e}/v_defect_{d_h}x{d_v}.csv',W[0,:,0,:],delimiter=',')
 
 if __name__ == '__main__':
     main()

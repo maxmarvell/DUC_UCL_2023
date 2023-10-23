@@ -53,6 +53,33 @@ def fit(space, cross_section):
 
     return dense_inputs, fit_data, R2, opt_pars[2]
 
+class Node:
+    def __init__(self,data:complex=None):
+        self.left = None
+        self.right = None
+        self.data = data
+
+class Tree:
+    def __init__(self,root=Node()):
+        self.root = root
+        self.current = self.root
+
+    def move_left(self):
+        if not self.current.left:
+            self.current.left = Node()
+        self.current = self.current.left
+
+    def move_right(self):
+        if not self.current.right:
+            self.current.right = Node()
+        self.current = self.current.right
+    
+    def assign_data(self,data:complex):
+        self.current.data = data
+
+    def return_root(self):
+        self.current = self.root  
+
 def random_circuit(tspan:int,
                    gates:np.ndarray,
                    temp:float):
@@ -103,7 +130,7 @@ def get_gates(q:int,
     rstr = f'DU_{q}' + r'_([0-9]*).csv'
     rx = re.compile(rstr)
 
-    for _, _, files in os.walk('data/FoldedTensors'):
+    for _, _, files in os.walk(f'data/FoldedTensors'):
         for file in files:
 
             res = rx.match(file)
@@ -121,7 +148,7 @@ def get_gates(q:int,
                 PW[seed] = W.reshape(q**2,q**2,q**2,q**2)
                 continue
 
-            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_866021931.csv',
+            P = np.loadtxt(f'data/FoldedPertubations/P_{q}_{seed}.csv',
                            delimiter=',',dtype='complex_')
             
             G = Exponential_Map(e,P)
