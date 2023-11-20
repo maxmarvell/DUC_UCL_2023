@@ -1,0 +1,9 @@
+LICENCE.txt
+MANIFEST.in
+README.md
+setup.py
+du_quantum_kit/du_quantum_kit.egg-info/PKG-INFO
+du_quantum_kit/du_quantum_kit.egg-info/SOURCES.txt
+du_quantum_kit/du_quantum_kit.egg-info/dependency_links.txt
+du_quantum_kit/du_quantum_kit.egg-info/requires.txt
+du_quantum_kit/du_quantum_kit.egg-info/top_level.txt
